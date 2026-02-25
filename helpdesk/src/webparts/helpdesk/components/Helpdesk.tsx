@@ -13,6 +13,7 @@ export default class Helpdesk extends React.Component<IHelpdeskProps, {}> {
       <HelpdeskDashboard
         userDisplayName={userDisplayName}
         isDarkTheme={isDarkTheme}
+        context={this.props.context}
       />
     );
   }

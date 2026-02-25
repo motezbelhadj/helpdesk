@@ -1,7 +1,7 @@
 export interface ITicket {
   id: string;
   title: string;
-  status: 'Pending' | 'In Progress' | 'Awaiting Feedback' | 'Resolved';
+  status: 'Pending' | 'In Progress' | 'Awaiting Feedback' | 'Resolved' | 'Resolu' | 'En cours' | 'En attente';
   date: string;
   category: string;
   estimatedResolution?: string;
