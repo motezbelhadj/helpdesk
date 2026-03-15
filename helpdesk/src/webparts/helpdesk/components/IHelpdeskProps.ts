@@ -6,5 +6,6 @@ export interface IHelpdeskProps {
   environmentMessage: string;
   hasTeamsContext: boolean;
   userDisplayName: string;
+  userEmail: string;
   context: WebPartContext;
 }

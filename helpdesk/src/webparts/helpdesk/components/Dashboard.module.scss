@@ -51,7 +51,7 @@
 .searchHeader {
   background: var(--primary-gradient);
   border-radius: 20px;
-  padding: 60px 40px;
+  padding: 40px 20px;
   text-align: center;
   color: white;
   margin-bottom: 40px;
@@ -85,15 +85,15 @@
 
 .searchInputWrapper {
   position: relative;
-  max-width: 650px;
+  max-width: 500px;
   margin: 0 auto;
 
   input {
     width: 100%;
-    padding: 18px 32px;
-    border-radius: 40px;
+    padding: 12px 24px;
+    border-radius: 30px;
     border: 2px solid transparent;
-    font-size: 1.1em;
+    font-size: 1em;
     box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
     outline: none;
     transition: all 0.3s;
@@ -172,7 +172,7 @@
 
 .quickActions {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
   gap: 16px;
   margin-top: 10px;
 }

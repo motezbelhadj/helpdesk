@@ -1,0 +1,361 @@
+.adminDashboard {
+  --brand-orange: #F58220;
+  --brand-dark-blue: #223445;
+  --brand-accent-blue: #3E5266;
+  --bg-color: #f8f9fa;
+  --card-bg: #ffffff;
+  --text-primary: #223445;
+  --text-secondary: #6B7280;
+  --border-color: #e5e7eb;
+  
+  font-family: 'Segoe UI', 'Outfit', Tahoma, Geneva, Verdana, sans-serif;
+  color: var(--text-primary);
+  background-color: var(--bg-color);
+  min-height: 100vh;
+  padding: 32px;
+
+  &.dark {
+    --bg-color: #111827;
+    --card-bg: #1F2937;
+    --text-primary: #F9FAFB;
+    --text-secondary: #9CA3AF;
+    --border-color: #374151;
+  }
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 32px;
+
+  .headerLeft {
+    h2 {
+      margin: 0 0 8px 0;
+      font-size: 2em;
+      color: var(--text-primary);
+    }
+    p {
+      margin: 0;
+      color: var(--text-secondary);
+      font-size: 1.1em;
+    }
+  }
+
+  .backButton {
+    background-color: transparent;
+    border: 2px solid var(--brand-orange);
+    color: var(--brand-orange);
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+
+    &:hover {
+      background-color: var(--brand-orange);
+      color: white;
+    }
+  }
+}
+
+.kpiGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 24px;
+  margin-bottom: 32px;
+
+  @media (max-width: 1024px) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.kpiCard {
+  background-color: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+
+  .kpiValue {
+    font-size: 2.5em;
+    font-weight: 700;
+    color: var(--brand-dark-blue);
+    margin-bottom: 8px;
+
+    &.warningText {
+      color: #d13438;
+    }
+  }
+
+  .kpiLabel {
+    color: var(--text-secondary);
+    font-size: 0.95em;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+}
+
+.dashboardGrid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 24px;
+
+  @media (max-width: 1024px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.mainContent {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.chartsRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.card {
+  background-color: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+
+  h3 {
+    margin: 0 0 16px 0;
+    font-size: 1.25em;
+    color: var(--text-primary);
+  }
+}
+
+.chartMetric {
+  color: var(--text-secondary);
+  font-size: 0.9em;
+  margin-bottom: 24px;
+}
+
+.chartPlaceholder {
+  height: 250px;
+  display: flex;
+  align-items: flex-end;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--border-color);
+
+  .placeholderBars {
+    display: flex;
+    justify-content: space-around;
+    align-items: flex-end;
+    width: 100%;
+    height: 100%;
+    
+    .barContainer {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      height: 100%;
+      justify-content: flex-end;
+      width: 10%;
+      
+      .bar {
+        width: 100%;
+        background-color: var(--brand-accent-blue);
+        border-radius: 4px 4px 0 0;
+        transition: height 0.5s ease;
+        margin-bottom: 8px;
+
+        &:hover {
+          background-color: var(--brand-orange);
+        }
+      }
+
+      span {
+        color: var(--text-secondary);
+        font-size: 0.85em;
+      }
+    }
+  }
+}
+
+.donutChartPlaceholder {
+  height: 150px;
+  width: 150px;
+  border-radius: 50%;
+  background: conic-gradient(
+    var(--brand-dark-blue) 0% 45%,
+    var(--brand-orange) 45% 75%,
+    #107c10 75% 100%
+  );
+  margin: 0 auto 24px auto;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  .donutCenter {
+    background-color: var(--card-bg);
+    height: 100px;
+    width: 100px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+}
+
+.chartLegend {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  flex-wrap: wrap;
+
+  .legendItem {
+    display: flex;
+    align-items: center;
+    font-size: 0.9em;
+    color: var(--text-secondary);
+
+    span {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      margin-right: 8px;
+    }
+  }
+}
+
+.statsList {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.statItem {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  .statLabel {
+    width: 100px;
+    font-size: 0.9em;
+    color: var(--text-secondary);
+  }
+
+  .statBarWrapper {
+    flex-grow: 1;
+    height: 8px;
+    background-color: var(--border-color);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .statBar {
+    height: 100%;
+    border-radius: 4px;
+  }
+
+  .statValue {
+    width: 40px;
+    text-align: right;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+}
+
+.activityFeed {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  margin-bottom: 24px;
+}
+
+.activityItem {
+  display: flex;
+  gap: 16px;
+  position: relative;
+
+  &::before {
+    content: '';
+    position: absolute;
+    left: 5px;
+    top: 20px;
+    bottom: -24px;
+    width: 2px;
+    background-color: var(--border-color);
+  }
+
+  &:last-child::before {
+    display: none;
+  }
+}
+
+.activityDot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background-color: var(--brand-accent-blue);
+  margin-top: 4px;
+  position: relative;
+  z-index: 2;
+  flex-shrink: 0;
+
+  &.warning {
+    background-color: #d13438;
+  }
+
+  &.success {
+    background-color: #107c10;
+  }
+}
+
+.activityContent {
+  color: var(--text-primary);
+  font-size: 0.95em;
+  line-height: 1.4;
+
+  strong {
+    color: var(--brand-dark-blue);
+  }
+}
+
+.activityTime {
+  color: var(--text-secondary);
+  font-size: 0.85em;
+  margin-top: 4px;
+}
+
+.viewAllButton {
+  width: 100%;
+  padding: 12px;
+  background-color: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--brand-dark-blue);
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover {
+    background-color: #f3f4f6;
+  }
+}

@@ -30,6 +30,7 @@ export default class HelpdeskWebPart extends BaseClientSideWebPart<IHelpdeskWebP
         environmentMessage: this._environmentMessage,
         hasTeamsContext: !!this.context.sdks.microsoftTeams,
         userDisplayName: this.context.pageContext.user.displayName,
+        userEmail: this.context.pageContext.user.loginName,
         context: this.context
       }
     );

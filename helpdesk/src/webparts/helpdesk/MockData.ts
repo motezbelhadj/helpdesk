@@ -4,6 +4,9 @@ export interface ITicket {
   status: 'Pending' | 'In Progress' | 'Awaiting Feedback' | 'Resolved' | 'Resolu' | 'En cours' | 'En attente';
   date: string;
   category: string;
+  priority?: 'Low' | 'Medium' | 'High' | 'Critical';
+  assignedTo?: string;
+  description?: string;
   estimatedResolution?: string;
 }
 
@@ -61,5 +64,49 @@ export const MOCK_HISTORY: ITicket[] = [
     status: 'Resolved',
     date: '2026-02-15',
     category: 'Software'
+  }
+];
+
+export interface IUser {
+  id: string;
+  displayName: string;
+  email: string;
+  role: 'Admin' | 'Agent' | 'User';
+  status: 'Active' | 'Inactive';
+  lastLogin?: string;
+}
+
+export const MOCK_USERS: IUser[] = [
+  {
+    id: '1',
+    displayName: 'Admin User',
+    email: 'admin@motez.com',
+    role: 'Admin',
+    status: 'Active',
+    lastLogin: '2026-03-10'
+  },
+  {
+    id: '2',
+    displayName: 'Agent Smith',
+    email: 'smith@motez.com',
+    role: 'Agent',
+    status: 'Active',
+    lastLogin: '2026-03-11'
+  },
+  {
+    id: '3',
+    displayName: 'John Doe',
+    email: 'john@motez.com',
+    role: 'User',
+    status: 'Active',
+    lastLogin: '2026-03-05'
+  },
+  {
+    id: '4',
+    displayName: 'Jane Doe',
+    email: 'jane@motez.com',
+    role: 'User',
+    status: 'Inactive',
+    lastLogin: '2026-02-28'
   }
 ];

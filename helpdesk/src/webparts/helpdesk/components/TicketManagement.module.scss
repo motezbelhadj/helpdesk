@@ -1,0 +1,216 @@
+@import '~@microsoft/sp-office-ui-fabric-core/dist/sass/SPFabricCore.scss';
+
+.ticketManagement {
+  --brand-orange: #F58220;
+  --brand-dark-blue: #223445;
+  --brand-accent-blue: #3E5266;
+  --bg-color: #f8f9fa;
+  --card-bg: #ffffff;
+  --text-primary: #223445;
+  --text-secondary: #6B7280;
+  --border-color: #e5e7eb;
+  
+  font-family: 'Segoe UI', 'Outfit', Tahoma, Geneva, Verdana, sans-serif;
+  color: var(--text-primary);
+  background-color: var(--bg-color);
+  min-height: 100vh;
+  padding: 32px;
+
+  &.dark {
+    --bg-color: #111827;
+    --card-bg: #1F2937;
+    --text-primary: #F9FAFB;
+    --text-secondary: #9CA3AF;
+    --border-color: #374151;
+  }
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 32px;
+
+  .headerLeft {
+    h2 {
+      margin: 0 0 8px 0;
+      font-size: 2em;
+      color: var(--text-primary);
+    }
+  }
+
+  .backButton {
+    background-color: transparent;
+    border: 2px solid var(--brand-orange);
+    color: var(--brand-orange);
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+
+    &:hover {
+      background-color: var(--brand-orange);
+      color: white;
+    }
+  }
+}
+
+.filtersSection {
+  background-color: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 24px;
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  align-items: center;
+
+  .filterGroup {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+
+    label {
+      font-size: 0.85em;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+    }
+
+    select, input {
+      padding: 8px 12px;
+      border-radius: 6px;
+      border: 1px solid var(--border-color);
+      background-color: var(--bg-color);
+      color: var(--text-primary);
+      outline: none;
+      min-width: 150px;
+
+      &:focus {
+        border-color: var(--brand-orange);
+      }
+    }
+  }
+}
+
+.tableContainer {
+  background-color: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+}
+
+.ticketTable {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+
+  th {
+    background-color: var(--bg-color);
+    padding: 16px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    border-bottom: 1px solid var(--border-color);
+    font-size: 0.9em;
+  }
+
+  td {
+    padding: 16px;
+    border-bottom: 1px solid var(--border-color);
+    font-size: 0.95em;
+  }
+
+  tr:last-child td {
+    border-bottom: none;
+  }
+
+  tr:hover td {
+    background-color: rgba(245, 130, 32, 0.05);
+    cursor: pointer;
+  }
+
+  .statusBadge {
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.8em;
+    font-weight: 600;
+    display: inline-block;
+  }
+}
+
+.priorityHigh { color: #d13438; font-weight: 600; }
+.priorityMedium { color: #f58220; font-weight: 600; }
+.priorityLow { color: #107c10; font-weight: 600; }
+
+.sidePanel {
+  position: fixed;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 400px;
+  background-color: var(--card-bg);
+  box-shadow: -5px 0 15px rgba(0, 0, 0, 0.1);
+  padding: 32px;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  border-left: 1px solid var(--border-color);
+
+  .panelHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 16px;
+
+    h3 { margin: 0; }
+    .closeButton {
+      background: none;
+      border: none;
+      font-size: 1.5em;
+      cursor: pointer;
+      color: var(--text-secondary);
+    }
+  }
+}
+
+.panelContent {
+  flex-grow: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+
+  .detailGroup {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+
+    label {
+      font-size: 0.85em;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+    }
+    
+    p { margin: 0; line-height: 1.5; }
+  }
+}
+
+.actionButton {
+  background-color: var(--brand-orange);
+  color: white;
+  border: none;
+  padding: 12px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s;
+
+  &:hover { opacity: 0.9; }
+  &:disabled { opacity: 0.5; cursor: not-allowed; }
+}

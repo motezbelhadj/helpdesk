@@ -8,21 +8,25 @@ import { WebPartContext } from '@microsoft/sp-webpart-base';
 
 export interface IDashboardProps {
     userDisplayName: string;
+    userEmail: string;
     isDarkTheme: boolean;
     context: WebPartContext;
+    onNavigateToAdmin?: () => void;
 }
 
 export const HelpdeskDashboard: React.FC<IDashboardProps> = (props) => {
-    const { userDisplayName, isDarkTheme, context } = props;
+    const { userDisplayName, isDarkTheme, context, onNavigateToAdmin } = props;
     const [activeTickets, setActiveTickets] = useState<ITicket[]>([]);
     const [resolvedTickets, setResolvedTickets] = useState<ITicket[]>([]);
     const [isLoading, setIsLoading] = useState<boolean>(true);
+    const [isAdmin, setIsAdmin] = useState<boolean>(false);
 
     useEffect(() => {
         const fetchTickets = async (): Promise<void> => {
             setIsLoading(true);
             try {
                 // Get current user ID (site-specific integer)
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const userId = (context.pageContext as any).legacyPageContext.userId;
                 // Fetch only items created by the current user
                 const listUrl = `${context.pageContext.web.absoluteUrl}/_api/web/lists/getbytitle('ticket')/items?$filter=AuthorId eq ${userId}`;
@@ -32,7 +36,7 @@ export const HelpdeskDashboard: React.FC<IDashboardProps> = (props) => {
                     const data = await response.json();
 
                     if (data.value && data.value.length > 0) {
-                        const tickets: ITicket[] = data.value.map((item: any) => {
+                        const tickets: ITicket[] = data.value.map((item: { Statut?: string; Status?: string; status?: string; Categorie?: string; Category?: string; category?: string; Reference?: string; reference?: string; Id: number; Title?: string; Titre?: string; Created?: string }) => {
                             const status = item.Statut || item.Status || item.status || 'Pending';
                             const category = item.Categorie || item.Category || item.category || 'General';
                             const reference = item.Reference || item.reference || `TK-${item.Id}`;
@@ -40,7 +44,7 @@ export const HelpdeskDashboard: React.FC<IDashboardProps> = (props) => {
                             return {
                                 id: reference,
                                 title: item.Title || item.Titre || 'Untitled',
-                                status: status as any,
+                                status: status as 'Pending' | 'In Progress' | 'Resolved', // Use known statuses
                                 date: item.Created ? new Date(item.Created).toLocaleDateString() : 'N/A',
                                 category: category
                             };
@@ -69,6 +73,30 @@ export const HelpdeskDashboard: React.FC<IDashboardProps> = (props) => {
             }
         };
 
+        const checkUserRole = async (): Promise<void> => {
+            try {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const userId = (context.pageContext as any).legacyPageContext.userId;
+                
+                // Query custom 'user' list where the Person column 'user' matches current user's ID
+                const listUrl = `${context.pageContext.web.absoluteUrl}/_api/web/lists/getbytitle('user')/items?$filter=userId eq ${userId}&$select=role,status`;
+                const response = await context.spHttpClient.get(listUrl, SPHttpClient.configurations.v1);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.value && data.value.length > 0) {
+                        const userRole = data.value[0].role || data.value[0].Role;
+                        if (userRole === 'Admin') {
+                            setIsAdmin(true);
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('Error checking user role:', error);
+            }
+        };
+
+        checkUserRole().catch(err => console.error(err));
         fetchTickets().catch(err => console.error(err));
     }, [context]);
 
@@ -90,6 +118,12 @@ export const HelpdeskDashboard: React.FC<IDashboardProps> = (props) => {
                         <div className={styles.glassCard}>
                             <h3>Quick Actions</h3>
                             <div className={styles.quickActions}>
+                                {isAdmin && onNavigateToAdmin && (
+                                    <div className={styles.actionButton} onClick={onNavigateToAdmin}>
+                                        <span>⚙️</span>
+                                        <div>Admin Panel</div>
+                                    </div>
+                                )}
                                 <div className={styles.actionButton}>
                                     <span>➕</span>
                                     <div>New Ticket</div>
