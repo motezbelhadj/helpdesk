@@ -9,10 +9,19 @@
           "manifest": "./src/webparts/helpdesk/HelpdeskWebPart.manifest.json"
         }
       ]
+    },
+    "admin-helpdesk-web-part": {
+      "components": [
+        {
+          "entrypoint": "./lib/webparts/adminHelpdesk/AdminHelpdeskWebPart.js",
+          "manifest": "./src/webparts/adminHelpdesk/AdminHelpdeskWebPart.manifest.json"
+        }
+      ]
     }
   },
   "externals": {},
   "localizedResources": {
-    "HelpdeskWebPartStrings": "lib/webparts/helpdesk/loc/{locale}.js"
+    "HelpdeskWebPartStrings": "lib/webparts/helpdesk/loc/{locale}.js",
+    "AdminHelpdeskWebPartStrings": "lib/webparts/adminHelpdesk/loc/{locale}.js"
   }
 }

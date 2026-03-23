@@ -219,3 +219,55 @@
     }
   }
 }
+
+.modalOverlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: rgba(0,0,0,0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modalContent {
+  background-color: var(--card-bg);
+  padding: 32px;
+  border-radius: 12px;
+  max-width: 400px;
+  width: 90%;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+  text-align: center;
+  
+  h3 { margin-top: 0; margin-bottom: 16px; font-size: 1.5em; }
+  p { margin-bottom: 24px; color: var(--text-secondary); line-height: 1.5; }
+  
+  .modalActions {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+    
+    button {
+      padding: 10px 24px;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      font-size: 1em;
+      transition: all 0.2s;
+      
+      &.confirmBtn {
+        background-color: var(--brand-orange);
+        color: white;
+        &:hover { background-color: #e67312; }
+      }
+      
+      &.cancelBtn {
+        background-color: transparent;
+        border: 2px solid var(--border-color);
+        color: var(--text-primary);
+        &:hover { background-color: var(--bg-color); }
+      }
+    }
+  }
+}

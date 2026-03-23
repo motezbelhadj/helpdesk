@@ -1,6 +1,6 @@
 import { WebPartContext } from "@microsoft/sp-webpart-base";
 
-export interface IHelpdeskProps {
+export interface IAdminHelpdeskProps {
   description: string;
   isDarkTheme: boolean;
   environmentMessage: string;
@@ -8,5 +8,5 @@ export interface IHelpdeskProps {
   userDisplayName: string;
   userEmail: string;
   context: WebPartContext;
-  adminPageUrl?: string;
+  userPageUrl?: string;
 }

@@ -4,7 +4,7 @@ import styles from './AdminDashboard.module.scss';
 import { escape } from '@microsoft/sp-lodash-subset';
 import { WebPartContext } from '@microsoft/sp-webpart-base';
 import { SPHttpClient, SPHttpClientResponse } from '@microsoft/sp-http';
-import { ITicket } from '../MockData';
+import { ITicket } from '../../helpdesk/MockData';
 
 export interface IAdminDashboardProps {
   userDisplayName: string;

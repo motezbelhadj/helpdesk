@@ -3,7 +3,7 @@ import { useState } from 'react';
 import styles from './UserManagement.module.scss';
 import { WebPartContext } from '@microsoft/sp-webpart-base';
 import { SPHttpClient, SPHttpClientResponse } from '@microsoft/sp-http';
-import { IUser } from '../MockData';
+import { IUser } from '../../helpdesk/MockData';
 
 export interface IUserManagementProps {
   isDarkTheme: boolean;
@@ -21,6 +21,7 @@ export const UserManagement: React.FC<IUserManagementProps> = (props) => {
   const [isAddingUser, setIsAddingUser] = useState<boolean>(false);
   const [newUserEmail, setNewUserEmail] = useState<string>('');
   const [newUserRole, setNewUserRole] = useState<'Admin' | 'Agent' | 'User'>('User');
+  const [confirmDialog, setConfirmDialog] = useState<{message: string, onConfirm: () => void} | null>(null);
   
   const fetchUsers = async (): Promise<void> => {
     setIsLoading(true);
@@ -61,28 +62,33 @@ export const UserManagement: React.FC<IUserManagementProps> = (props) => {
   }, []);
 
   const handleRoleChange = async (userId: string, newRole: 'Admin' | 'Agent' | 'User') => {
-    try {
-      const listUrl = `${context.pageContext.web.absoluteUrl}/_api/web/lists/getbytitle('user')/items(${userId})`;
-      const response = await context.spHttpClient.post(listUrl, SPHttpClient.configurations.v1, {
-        headers: {
-          'Accept': 'application/json;odata=nometadata',
-          'Content-type': 'application/json;odata=nometadata',
-          'odata-version': '',
-          'IF-MATCH': '*',
-          'X-HTTP-Method': 'MERGE'
-        },
-        body: JSON.stringify({ role: newRole })
-      });
+    setConfirmDialog({
+      message: `Are you sure you want to change the role to ${newRole}?`,
+      onConfirm: async () => {
+        try {
+          const listUrl = `${context.pageContext.web.absoluteUrl}/_api/web/lists/getbytitle('user')/items(${userId})`;
+          const response = await context.spHttpClient.post(listUrl, SPHttpClient.configurations.v1, {
+            headers: {
+              'Accept': 'application/json;odata=nometadata',
+              'Content-type': 'application/json;odata=nometadata',
+              'odata-version': '',
+              'IF-MATCH': '*',
+              'X-HTTP-Method': 'MERGE'
+            },
+            body: JSON.stringify({ role: newRole })
+          });
 
-      if (response.ok) {
-        setUsers(prev => prev.map(u => u.id === userId ? { ...u, role: newRole } : u));
-        console.log(`User ${userId} role updated to ${newRole} in SharePoint`);
-      } else {
-        alert('Failed to update role in SharePoint.');
+          if (response.ok) {
+            setUsers(prev => prev.map(u => u.id === userId ? { ...u, role: newRole } : u));
+            console.log(`User ${userId} role updated to ${newRole} in SharePoint`);
+          } else {
+            alert('Failed to update role in SharePoint.');
+          }
+        } catch (err) {
+          console.error('Error updating role:', err);
+        }
       }
-    } catch (err) {
-      console.error('Error updating role:', err);
-    }
+    });
   };
 
   const toggleStatus = async (userId: string) => {
@@ -91,28 +97,33 @@ export const UserManagement: React.FC<IUserManagementProps> = (props) => {
     const user = userArray[0];
 
     const newStatus = user.status === 'Active' ? 'Inactive' : 'Active';
-    try {
-      const listUrl = `${context.pageContext.web.absoluteUrl}/_api/web/lists/getbytitle('user')/items(${userId})`;
-      const response = await context.spHttpClient.post(listUrl, SPHttpClient.configurations.v1, {
-        headers: {
-          'Accept': 'application/json;odata=nometadata',
-          'Content-type': 'application/json;odata=nometadata',
-          'odata-version': '',
-          'IF-MATCH': '*',
-          'X-HTTP-Method': 'MERGE'
-        },
-        body: JSON.stringify({ status: newStatus })
-      });
+    setConfirmDialog({
+      message: `Are you sure you want to change this user's status to ${newStatus}?`,
+      onConfirm: async () => {
+        try {
+          const listUrl = `${context.pageContext.web.absoluteUrl}/_api/web/lists/getbytitle('user')/items(${userId})`;
+          const response = await context.spHttpClient.post(listUrl, SPHttpClient.configurations.v1, {
+            headers: {
+              'Accept': 'application/json;odata=nometadata',
+              'Content-type': 'application/json;odata=nometadata',
+              'odata-version': '',
+              'IF-MATCH': '*',
+              'X-HTTP-Method': 'MERGE'
+            },
+            body: JSON.stringify({ status: newStatus })
+          });
 
-      if (response.ok) {
-        setUsers(prev => prev.map(u => u.id === userId ? { ...u, status: newStatus } : u));
-        console.log(`User ${userId} status updated to ${newStatus} in SharePoint`);
-      } else {
-        alert('Failed to update status in SharePoint.');
+          if (response.ok) {
+            setUsers(prev => prev.map(u => u.id === userId ? { ...u, status: newStatus } : u));
+            console.log(`User ${userId} status updated to ${newStatus} in SharePoint`);
+          } else {
+            alert('Failed to update status in SharePoint.');
+          }
+        } catch (err) {
+          console.error('Error updating status:', err);
+        }
       }
-    } catch (err) {
-      console.error('Error updating status:', err);
-    }
+    });
   };
 
   const handleAddUser = async (e: React.FormEvent) => {
@@ -122,64 +133,63 @@ export const UserManagement: React.FC<IUserManagementProps> = (props) => {
       return;
     }
 
-    setIsAddingUser(true);
-    try {
-      // 1. Resolve the user in SharePoint to get their Site ID
-      const ensureUserUrl = `${context.pageContext.web.absoluteUrl}/_api/web/ensureuser('${newUserEmail}')`;
-      const ensureRes = await context.spHttpClient.post(ensureUserUrl, SPHttpClient.configurations.v1, {
-        headers: { 'Accept': 'application/json;odata=nometadata' }
-      });
+    setConfirmDialog({
+      message: `Are you sure you want to add ${newUserEmail} to the Helpdesk as an ${newUserRole}?`,
+      onConfirm: async () => {
+        setIsAddingUser(true);
+        try {
+          // 1. Resolve the user in SharePoint to get their Site ID
+          const ensureUserUrl = `${context.pageContext.web.absoluteUrl}/_api/web/ensureuser`;
+          const ensureResponse = await context.spHttpClient.post(ensureUserUrl, SPHttpClient.configurations.v1, {
+            headers: {
+              'Accept': 'application/json;odata=nometadata',
+              'Content-type': 'application/json;odata=nometadata',
+              'odata-version': ''
+            },
+            body: JSON.stringify({ logonName: newUserEmail })
+          });
 
-      let sharePointUserId = null;
-      let displayName = 'Unknown';
-      if (ensureRes.ok) {
-        const userInfo = await ensureRes.json();
-        sharePointUserId = userInfo.Id;
-        displayName = userInfo.Title;
-      } else {
-        alert('Could not find this user in your organization. Please check the email.');
-        setIsAddingUser(false);
-        return;
+          if (!ensureResponse.ok) {
+            throw new Error(`Failed to resolve user ${newUserEmail}. Ensure it is a valid M365 account.`);
+          }
+
+          const userData = await ensureResponse.json();
+          const spUserId = userData.Id;
+          const userDisplayName = userData.Title || newUserEmail;
+
+          // 2. Add the user to the custom list
+          const listUrl = `${context.pageContext.web.absoluteUrl}/_api/web/lists/getbytitle('user')/items`;
+          const addResponse = await context.spHttpClient.post(listUrl, SPHttpClient.configurations.v1, {
+            headers: {
+              'Accept': 'application/json;odata=nometadata',
+              'Content-type': 'application/json;odata=nometadata',
+              'odata-version': ''
+            },
+            body: JSON.stringify({
+              Title: userDisplayName,
+              userIdId: spUserId, // Ensure this matches the internal name of your Person column (e.g. userId, userIdId)
+              role: newUserRole,
+              status: 'Active'
+            })
+          });
+
+          if (addResponse.ok) {
+            alert('User added successfully!');
+            setNewUserEmail('');
+            setNewUserRole('User');
+            fetchUsers().catch(err => console.error(err)); // Refresh list
+          } else {
+            const errData = await addResponse.json();
+            alert(`Failed to add user to list: ${errData.error?.message?.value || 'Unknown error'}`);
+          }
+        } catch (err: any) {
+          console.error('Error adding user:', err);
+          alert(err.message || 'An unexpected error occurred while adding the user.');
+        } finally {
+          setIsAddingUser(false);
+        }
       }
-
-      // 2. Add to the custom 'user' list
-      const listUrl = `${context.pageContext.web.absoluteUrl}/_api/web/lists/getbytitle('user')/items`;
-      const addRes = await context.spHttpClient.post(listUrl, SPHttpClient.configurations.v1, {
-        headers: {
-          'Accept': 'application/json;odata=nometadata',
-          'Content-type': 'application/json;odata=nometadata'
-        },
-        body: JSON.stringify({
-          Title: displayName,
-          userId: sharePointUserId, // OData expects [ColumnName]Id for Person fields
-          role: newUserRole,
-          status: 'Active'
-        })
-      });
-
-      if (addRes.ok) {
-        const newItem = await addRes.json();
-        setUsers(prev => [...prev, {
-          id: newItem.Id.toString(),
-          displayName: displayName,
-          email: newUserEmail,
-          role: newUserRole,
-          status: 'Active',
-          lastLogin: 'Never'
-        }]);
-        setNewUserEmail('');
-        setNewUserRole('User');
-        console.log(`Successfully added user ${displayName}`);
-      } else {
-        const errData = await addRes.json();
-        alert(`Failed to add user to list: ${errData.error?.message?.value || 'Unknown error'}`);
-      }
-    } catch (err) {
-      console.error('Error adding user:', err);
-      alert('An unexpected error occurred while adding the user.');
-    } finally {
-      setIsAddingUser(false);
-    }
+    });
   };
 
   return (
@@ -303,6 +313,22 @@ export const UserManagement: React.FC<IUserManagementProps> = (props) => {
           </table>
         )}
       </div>
+      {/* Custom Confirmation Modal */}
+      {confirmDialog && (
+        <div className={styles.modalOverlay}>
+          <div className={styles.modalContent}>
+            <h3>Confirm Action</h3>
+            <p>{confirmDialog.message}</p>
+            <div className={styles.modalActions}>
+              <button className={styles.cancelBtn} onClick={() => setConfirmDialog(null)}>Cancel</button>
+              <button className={styles.confirmBtn} onClick={() => {
+                confirmDialog.onConfirm();
+                setConfirmDialog(null);
+              }}>Confirm</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

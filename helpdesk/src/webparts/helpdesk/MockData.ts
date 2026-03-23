@@ -1,5 +1,6 @@
 export interface ITicket {
-  id: string;
+  id: string; // The Reference ID (e.g. TK-12)
+  spId?: number; // Internal SharePoint ID
   title: string;
   status: 'Pending' | 'In Progress' | 'Awaiting Feedback' | 'Resolved' | 'Resolu' | 'En cours' | 'En attente';
   date: string;

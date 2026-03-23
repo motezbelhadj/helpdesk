@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import styles from './TicketManagement.module.scss';
 import { WebPartContext } from '@microsoft/sp-webpart-base';
 import { SPHttpClient, SPHttpClientResponse } from '@microsoft/sp-http';
-import { ITicket } from '../MockData';
+import { ITicket } from '../../helpdesk/MockData';
 
 export interface ITicketManagementProps {
   isDarkTheme: boolean;
@@ -17,7 +17,8 @@ export const TicketManagement: React.FC<ITicketManagementProps> = (props) => {
   const [filteredTickets, setFilteredTickets] = useState<ITicket[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [selectedTicket, setSelectedTicket] = useState<ITicket | null>(null);
-  const [agents, setAgents] = useState<{id: string, name: string}[]>([]);
+  const [agents, setAgents] = useState<{id: string, siteUserId: number, name: string}[]>([]);
+  const [confirmDialog, setConfirmDialog] = useState<{message: string, onConfirm: () => void} | null>(null);
   
   // Filters
   const [statusFilter, setStatusFilter] = useState<string>('All');
@@ -35,7 +36,7 @@ export const TicketManagement: React.FC<ITicketManagementProps> = (props) => {
   const fetchTickets = async (): Promise<void> => {
     setIsLoading(true);
     try {
-      const listUrl = `${context.pageContext.web.absoluteUrl}/_api/web/lists/getbytitle('ticket')/items`;
+      const listUrl = `${context.pageContext.web.absoluteUrl}/_api/web/lists/getbytitle('ticket')/items?$select=*,AssignedTo/Title&$expand=AssignedTo`;
       const response: SPHttpClientResponse = await context.spHttpClient.get(listUrl, SPHttpClient.configurations.v1);
 
       if (response.ok) {
@@ -49,13 +50,14 @@ export const TicketManagement: React.FC<ITicketManagementProps> = (props) => {
 
             return {
               id: reference,
+              spId: item.Id,
               title: item.Title || item.Titre || 'Untitled',
               status: status as any,
               date: item.Created ? new Date(item.Created).toLocaleDateString() : 'N/A',
               category: category,
               priority: priority as any,
               description: item.Description || item.description || 'No description provided.',
-              assignedTo: item.AssignedTo || item.AttribueA || 'Unassigned'
+              assignedTo: item.AssignedTo?.Title || item.AttribueA || 'Unassigned'
             };
           });
           setTickets(fetchedTickets);
@@ -71,8 +73,8 @@ export const TicketManagement: React.FC<ITicketManagementProps> = (props) => {
   const fetchAgents = async (): Promise<void> => {
     try {
       // Removing $filter because filtering Choice columns via REST often throws 500 errors in SharePoint.
-      // We'll fetch all users from the custom list and filter them locally.
-      const listUrl = `${context.pageContext.web.absoluteUrl}/_api/web/lists/getbytitle('user')/items?$select=Id,user/Title,role,Role&$expand=user`;
+      // Fetch user/Id as well so we can assign tickets using AssignedToId
+      const listUrl = `${context.pageContext.web.absoluteUrl}/_api/web/lists/getbytitle('user')/items?$select=Id,user/Title,user/Id,role,Role&$expand=user`;
       console.log('Fetching agents from:', listUrl);
       const response = await context.spHttpClient.get(listUrl, SPHttpClient.configurations.v1);
       
@@ -86,6 +88,7 @@ export const TicketManagement: React.FC<ITicketManagementProps> = (props) => {
           
           const fetchedAgents = agentItems.map((item: any) => ({
             id: item.Id.toString(),
+            siteUserId: item.user?.Id || 0,
             name: item.user?.Title || item.Title || `Agent ${item.Id}`
           }));
           console.log('Mapped agents:', fetchedAgents);
@@ -126,14 +129,46 @@ export const TicketManagement: React.FC<ITicketManagementProps> = (props) => {
     setFilteredTickets(result);
   };
 
-  const updateTicket = async (ticketId: string, updates: any): Promise<void> => {
-    // In a real app, this would be an SPHttpClient.post call to update the list item
-    // For this demo, we'll update the local state for immediate feedback
-    setTickets(prev => prev.map(t => t.id === ticketId ? { ...t, ...updates } : t));
-    if (selectedTicket && selectedTicket.id === ticketId) {
-      setSelectedTicket({ ...selectedTicket, ...updates });
-    }
-    alert(`Ticket ${ticketId} updated successfully (Demo Mode)`);
+  const updateTicket = async (ticketId: string, spId: number | undefined, updates: any, spUpdatePayload: any): Promise<void> => {
+    setConfirmDialog({
+      message: `Are you sure you want to apply these updates to ticket ${ticketId}?`,
+      onConfirm: async () => {
+        // Optimistic UI update
+        setTickets(prev => prev.map(t => t.id === ticketId ? { ...t, ...updates } : t));
+        if (selectedTicket && selectedTicket.id === ticketId) {
+          setSelectedTicket({ ...selectedTicket, ...updates });
+        }
+
+        if (!spId) {
+           console.error("No SharePoint ID found for ticket", ticketId);
+           return;
+        }
+
+        try {
+          const listUrl = `${context.pageContext.web.absoluteUrl}/_api/web/lists/getbytitle('ticket')/items(${spId})`;
+          const response = await context.spHttpClient.post(listUrl, SPHttpClient.configurations.v1, {
+            headers: {
+              'Accept': 'application/json;odata=nometadata',
+              'Content-type': 'application/json;odata=nometadata',
+              'odata-version': '',
+              'IF-MATCH': '*',
+              'X-HTTP-Method': 'MERGE'
+            },
+            body: JSON.stringify(spUpdatePayload)
+          });
+          if (response.ok) {
+            console.log(`Ticket ${ticketId} successfully updated in SharePoint.`);
+          } else {
+            const errAlert = await response.json();
+            alert(`Failed to update ticket in SharePoint: ${errAlert.error?.message?.value || 'Unknown error'}`);
+            // Consider rolling back state if it fails.
+          }
+        } catch (err) {
+          console.error('Error updating ticket:', err);
+          alert('An unexpected error occurred while saving the update to SharePoint.');
+        }
+      }
+    });
   };
 
   const getStatusColor = (status: string): string => {
@@ -258,7 +293,7 @@ export const TicketManagement: React.FC<ITicketManagementProps> = (props) => {
               <label>Update Status</label>
               <select 
                 value={selectedTicket.status} 
-                onChange={(e) => updateTicket(selectedTicket.id, { status: e.target.value })}
+                onChange={(e) => updateTicket(selectedTicket.id, selectedTicket.spId, { status: e.target.value }, { Status: e.target.value })}
               >
                 <option value="Pending">Pending</option>
                 <option value="In Progress">In Progress</option>
@@ -270,20 +305,45 @@ export const TicketManagement: React.FC<ITicketManagementProps> = (props) => {
             <div className={styles.detailGroup}>
               <label>Assign to Agent</label>
               <select 
-                value={selectedTicket.assignedTo} 
-                onChange={(e) => updateTicket(selectedTicket.id, { assignedTo: e.target.value })}
+                value={(agents.filter(a => a.name === selectedTicket.assignedTo)[0])?.siteUserId || ''} 
+                onChange={(e) => {
+                  const siteUserIdStr = e.target.value;
+                  if (!siteUserIdStr) {
+                    updateTicket(selectedTicket.id, selectedTicket.spId, { assignedTo: 'Unassigned' }, { AssignedToId: null });
+                  } else {
+                    const siteUserId = parseInt(siteUserIdStr, 10);
+                    const agent = agents.filter(a => a.siteUserId === siteUserId)[0];
+                    updateTicket(selectedTicket.id, selectedTicket.spId, { assignedTo: agent?.name || 'Assigned' }, { AssignedToId: siteUserId });
+                  }
+                }}
               >
-                <option value="Unassigned">Unassigned</option>
+                <option value="">Unassigned</option>
                 {agents.map(agent => (
-                  <option key={agent.id} value={agent.name}>{agent.name}</option>
+                  <option key={agent.id} value={agent.siteUserId}>{agent.name}</option>
                 ))}
               </select>
             </div>
           </div>
           
           <button className={styles.actionButton} onClick={() => setSelectedTicket(null)}>
-            Mark as Processed
+            Okay
           </button>
+        </div>
+      )}
+      {/* Custom Confirmation Modal */}
+      {confirmDialog && (
+        <div className={styles.modalOverlay}>
+          <div className={styles.modalContent}>
+            <h3>Confirm Action</h3>
+            <p>{confirmDialog.message}</p>
+            <div className={styles.modalActions}>
+              <button className={styles.cancelBtn} onClick={() => setConfirmDialog(null)}>Cancel</button>
+              <button className={styles.confirmBtn} onClick={() => {
+                confirmDialog.onConfirm();
+                setConfirmDialog(null);
+              }}>Confirm</button>
+            </div>
+          </div>
         </div>
       )}
     </div>

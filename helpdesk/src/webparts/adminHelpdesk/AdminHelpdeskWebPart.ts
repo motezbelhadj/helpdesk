@@ -8,23 +8,23 @@ import {
 import { BaseClientSideWebPart } from '@microsoft/sp-webpart-base';
 import { IReadonlyTheme } from '@microsoft/sp-component-base';
 
-import * as strings from 'HelpdeskWebPartStrings';
-import Helpdesk from './components/Helpdesk';
-import { IHelpdeskProps } from './components/IHelpdeskProps';
+import * as strings from 'AdminHelpdeskWebPartStrings';
+import AdminHelpdesk from './components/AdminHelpdesk';
+import { IAdminHelpdeskProps } from './components/IAdminHelpdeskProps';
 
-export interface IHelpdeskWebPartProps {
+export interface IAdminHelpdeskWebPartProps {
   description: string;
-  adminPageUrl: string;
+  userPageUrl: string;
 }
 
-export default class HelpdeskWebPart extends BaseClientSideWebPart<IHelpdeskWebPartProps> {
+export default class AdminHelpdeskWebPart extends BaseClientSideWebPart<IAdminHelpdeskWebPartProps> {
 
   private _isDarkTheme: boolean = false;
   private _environmentMessage: string = '';
 
   public render(): void {
-    const element: React.ReactElement<IHelpdeskProps> = React.createElement(
-      Helpdesk,
+    const element: React.ReactElement<IAdminHelpdeskProps> = React.createElement(
+      AdminHelpdesk,
       {
         description: this.properties.description,
         isDarkTheme: this._isDarkTheme,
@@ -33,7 +33,7 @@ export default class HelpdeskWebPart extends BaseClientSideWebPart<IHelpdeskWebP
         userDisplayName: this.context.pageContext.user.displayName,
         userEmail: this.context.pageContext.user.loginName,
         context: this.context,
-        adminPageUrl: this.properties.adminPageUrl
+        userPageUrl: this.properties.userPageUrl
       }
     );
 
@@ -115,9 +115,9 @@ export default class HelpdeskWebPart extends BaseClientSideWebPart<IHelpdeskWebP
                 PropertyPaneTextField('description', {
                   label: strings.DescriptionFieldLabel
                 }),
-                PropertyPaneTextField('adminPageUrl', {
-                  label: 'Admin Page URL',
-                  description: 'The URL of the SharePoint page where the Admin web part is hosted.'
+                PropertyPaneTextField('userPageUrl', {
+                  label: 'User Portal URL',
+                  description: 'The URL of the SharePoint page where the regular User Helpdesk web part is hosted.'
                 })
               ]
             }
