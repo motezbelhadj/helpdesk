@@ -15,6 +15,7 @@ import { IAdminHelpdeskProps } from './components/IAdminHelpdeskProps';
 export interface IAdminHelpdeskWebPartProps {
   description: string;
   userPageUrl: string;
+  powerBIReportUrl: string;
 }
 
 export default class AdminHelpdeskWebPart extends BaseClientSideWebPart<IAdminHelpdeskWebPartProps> {
@@ -33,7 +34,8 @@ export default class AdminHelpdeskWebPart extends BaseClientSideWebPart<IAdminHe
         userDisplayName: this.context.pageContext.user.displayName,
         userEmail: this.context.pageContext.user.loginName,
         context: this.context,
-        userPageUrl: this.properties.userPageUrl
+        userPageUrl: this.properties.userPageUrl,
+        powerBIReportUrl: this.properties.powerBIReportUrl
       }
     );
 
@@ -118,6 +120,10 @@ export default class AdminHelpdeskWebPart extends BaseClientSideWebPart<IAdminHe
                 PropertyPaneTextField('userPageUrl', {
                   label: 'User Portal URL',
                   description: 'The URL of the SharePoint page where the regular User Helpdesk web part is hosted.'
+                }),
+                PropertyPaneTextField('powerBIReportUrl', {
+                  label: 'Power BI Report URL',
+                  description: 'Paste the "Publish to Web" or "Embed in SharePoint" link from your Power BI report.'
                 })
               ]
             }

@@ -9,4 +9,5 @@ export interface IAdminHelpdeskProps {
   userEmail: string;
   context: WebPartContext;
   userPageUrl?: string;
+  powerBIReportUrl?: string;
 }

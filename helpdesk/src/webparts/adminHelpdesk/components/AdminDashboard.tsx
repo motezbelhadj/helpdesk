@@ -5,6 +5,7 @@ import { escape } from '@microsoft/sp-lodash-subset';
 import { WebPartContext } from '@microsoft/sp-webpart-base';
 import { SPHttpClient, SPHttpClientResponse } from '@microsoft/sp-http';
 import { ITicket } from '../../helpdesk/MockData';
+import { Icon } from '@fluentui/react';
 
 export interface IAdminDashboardProps {
   userDisplayName: string;
@@ -13,10 +14,11 @@ export interface IAdminDashboardProps {
   onNavigateBack: () => void;
   onNavigateToTickets: () => void;
   onNavigateToUsers: () => void;
+  powerBIReportUrl?: string;
 }
 
 export const AdminDashboard: React.FC<IAdminDashboardProps> = (props) => {
-  const { userDisplayName, isDarkTheme, onNavigateBack, context } = props;
+  const { userDisplayName, isDarkTheme, onNavigateBack, context, powerBIReportUrl } = props;
   const [tickets, setTickets] = useState<ITicket[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
@@ -179,8 +181,43 @@ export const AdminDashboard: React.FC<IAdminDashboardProps> = (props) => {
                                  <div className={styles.statValue}>{lowPriority}</div>
                              </div>
                          </div>
-                    </div>
+                     </div>
                 </div>
+
+                {/* Power BI Embedded Report Section */}
+                {powerBIReportUrl ? (
+                    <div className={styles.card}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                            <h3>Live Power BI Report</h3>
+                            <span style={{ fontSize: '0.8em', color: 'var(--text-secondary)' }}>Live Sync Enabled</span>
+                        </div>
+                        <div className={styles.powerBIContainer}>
+                            <iframe
+                                title="Power BI Report"
+                                width="100%"
+                                height="600"
+                                src={powerBIReportUrl}
+                                frameBorder="0"
+                                allowFullScreen={true}
+                            ></iframe>
+                        </div>
+                    </div>
+                ) : (
+                    <div className={`${styles.card} ${styles.powerBICard}`}>
+                        <div className={styles.powerBIContent}>
+                            <div className={styles.powerBIIcon}>
+                                <Icon iconName="PowerBILogo" />
+                            </div>
+                            <div className={styles.powerBIText}>
+                                <h4>Advanced Analytics with Power BI</h4>
+                                <p>For more in-depth insights and custom reports, you can connect your SharePoint lists directly to Power BI. Once connected, paste your report URL in the web part properties.</p>
+                            </div>
+                            <button className={styles.learnMoreBtn} onClick={() => window.open('https://powerbi.microsoft.com/', '_blank')}>
+                                Learn More
+                            </button>
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* Sidebar / Activity Feed */}

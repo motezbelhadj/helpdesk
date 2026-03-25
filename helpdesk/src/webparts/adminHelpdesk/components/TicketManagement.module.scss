@@ -215,6 +215,28 @@
   &:disabled { opacity: 0.5; cursor: not-allowed; }
 }
 
+.modifyBtn {
+  background-color: transparent;
+  border: 1px solid var(--brand-orange);
+  color: var(--brand-orange);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 1.1em;
+
+  &:hover {
+    background-color: var(--brand-orange);
+    color: white;
+    transform: scale(1.1);
+  }
+}
+
 .modalOverlay {
   position: fixed;
   top: 0; left: 0; right: 0; bottom: 0;

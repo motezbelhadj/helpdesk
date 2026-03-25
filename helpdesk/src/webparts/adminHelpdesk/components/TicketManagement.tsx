@@ -4,6 +4,7 @@ import styles from './TicketManagement.module.scss';
 import { WebPartContext } from '@microsoft/sp-webpart-base';
 import { SPHttpClient, SPHttpClientResponse } from '@microsoft/sp-http';
 import { ITicket } from '../../helpdesk/MockData';
+import { Icon, TooltipHost } from '@fluentui/react';
 
 export interface ITicketManagementProps {
   isDarkTheme: boolean;
@@ -19,6 +20,18 @@ export const TicketManagement: React.FC<ITicketManagementProps> = (props) => {
   const [selectedTicket, setSelectedTicket] = useState<ITicket | null>(null);
   const [agents, setAgents] = useState<{id: string, siteUserId: number, name: string}[]>([]);
   const [confirmDialog, setConfirmDialog] = useState<{message: string, onConfirm: () => void} | null>(null);
+
+  // Pending changes in detail panel
+  const [pendingStatus, setPendingStatus] = useState<string>('');
+  const [pendingAgentId, setPendingAgentId] = useState<number | string>('');
+
+  useEffect(() => {
+    if (selectedTicket) {
+      setPendingStatus(selectedTicket.status);
+      const agent = agents.filter((a: any) => a.name === selectedTicket.assignedTo)[0];
+      setPendingAgentId(agent?.siteUserId || '');
+    }
+  }, [selectedTicket, agents]);
   
   // Filters
   const [statusFilter, setStatusFilter] = useState<string>('All');
@@ -240,11 +253,12 @@ export const TicketManagement: React.FC<ITicketManagementProps> = (props) => {
                 <th>Category</th>
                 <th>Date</th>
                 <th>Assigned To</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
               {filteredTickets.map(ticket => (
-                <tr key={ticket.id} onClick={() => setSelectedTicket(ticket)}>
+                <tr key={ticket.id}>
                   <td style={{ fontWeight: 600 }}>{ticket.id}</td>
                   <td>{ticket.title}</td>
                   <td>
@@ -260,6 +274,13 @@ export const TicketManagement: React.FC<ITicketManagementProps> = (props) => {
                   <td>{ticket.category}</td>
                   <td>{ticket.date}</td>
                   <td>{ticket.assignedTo}</td>
+                  <td>
+                    <TooltipHost content="Edit Ticket">
+                      <button className={styles.modifyBtn} onClick={() => setSelectedTicket(ticket)}>
+                        <Icon iconName="Edit" />
+                      </button>
+                    </TooltipHost>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -292,8 +313,8 @@ export const TicketManagement: React.FC<ITicketManagementProps> = (props) => {
             <div className={styles.detailGroup}>
               <label>Update Status</label>
               <select 
-                value={selectedTicket.status} 
-                onChange={(e) => updateTicket(selectedTicket.id, selectedTicket.spId, { status: e.target.value }, { Status: e.target.value })}
+                value={pendingStatus} 
+                onChange={(e) => setPendingStatus(e.target.value)}
               >
                 <option value="Pending">Pending</option>
                 <option value="In Progress">In Progress</option>
@@ -305,17 +326,8 @@ export const TicketManagement: React.FC<ITicketManagementProps> = (props) => {
             <div className={styles.detailGroup}>
               <label>Assign to Agent</label>
               <select 
-                value={(agents.filter(a => a.name === selectedTicket.assignedTo)[0])?.siteUserId || ''} 
-                onChange={(e) => {
-                  const siteUserIdStr = e.target.value;
-                  if (!siteUserIdStr) {
-                    updateTicket(selectedTicket.id, selectedTicket.spId, { assignedTo: 'Unassigned' }, { AssignedToId: null });
-                  } else {
-                    const siteUserId = parseInt(siteUserIdStr, 10);
-                    const agent = agents.filter(a => a.siteUserId === siteUserId)[0];
-                    updateTicket(selectedTicket.id, selectedTicket.spId, { assignedTo: agent?.name || 'Assigned' }, { AssignedToId: siteUserId });
-                  }
-                }}
+                value={pendingAgentId} 
+                onChange={(e) => setPendingAgentId(e.target.value)}
               >
                 <option value="">Unassigned</option>
                 {agents.map(agent => (
@@ -325,7 +337,40 @@ export const TicketManagement: React.FC<ITicketManagementProps> = (props) => {
             </div>
           </div>
           
-          <button className={styles.actionButton} onClick={() => setSelectedTicket(null)}>
+          <button className={styles.actionButton} onClick={() => {
+            const currentAgent = agents.filter((a: any) => a.name === selectedTicket.assignedTo)[0];
+            const currentAgentId = currentAgent?.siteUserId || '';
+            
+            const statusChanged = pendingStatus !== selectedTicket.status;
+            const agentChanged = pendingAgentId.toString() !== currentAgentId.toString();
+
+            if (statusChanged || agentChanged) {
+              const updates: any = {};
+              const spUpdates: any = {};
+              
+              if (statusChanged) {
+                updates.status = pendingStatus;
+                spUpdates.Status = pendingStatus;
+              }
+              
+              if (agentChanged) {
+                if (!pendingAgentId) {
+                  updates.assignedTo = 'Unassigned';
+                  spUpdates.AssignedToId = null;
+                } else {
+                  const newAgent = agents.filter((a: any) => a.siteUserId.toString() === pendingAgentId.toString())[0];
+                  updates.assignedTo = newAgent?.name || 'Assigned';
+                  spUpdates.AssignedToId = parseInt(pendingAgentId.toString(), 10);
+                }
+              }
+
+              updateTicket(selectedTicket.id, selectedTicket.spId, updates, spUpdates);
+              setSelectedTicket(null); // Close panel after initiating update
+            } else {
+              // No changes, just close
+              setSelectedTicket(null);
+            }
+          }}>
             Okay
           </button>
         </div>

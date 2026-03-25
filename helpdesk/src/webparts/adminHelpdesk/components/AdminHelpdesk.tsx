@@ -21,7 +21,8 @@ export default class AdminHelpdesk extends React.Component<IAdminHelpdeskProps, 
       isDarkTheme,
       userDisplayName,
       context,
-      userPageUrl
+      userPageUrl,
+      powerBIReportUrl
     } = this.props;
 
     if (this.state.currentView === 'user-management') {
@@ -50,6 +51,7 @@ export default class AdminHelpdesk extends React.Component<IAdminHelpdeskProps, 
           userDisplayName={userDisplayName}
           isDarkTheme={isDarkTheme}
           context={context}
+          powerBIReportUrl={powerBIReportUrl}
           onNavigateBack={() => {
             if (userPageUrl) {
               window.location.href = userPageUrl;
