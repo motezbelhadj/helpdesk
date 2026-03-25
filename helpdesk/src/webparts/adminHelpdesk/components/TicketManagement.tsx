@@ -2,391 +2,324 @@ import * as React from 'react';
 import { useState, useEffect } from 'react';
 import styles from './TicketManagement.module.scss';
 import { WebPartContext } from '@microsoft/sp-webpart-base';
-import { SPHttpClient, SPHttpClientResponse } from '@microsoft/sp-http';
-import { ITicket } from '../../helpdesk/MockData';
 import { Icon, TooltipHost } from '@fluentui/react';
+import { SPService } from '../../../services/SPService';
 
 export interface ITicketManagementProps {
   isDarkTheme: boolean;
   context: WebPartContext;
+  spService: SPService;
   onNavigateBack: () => void;
 }
 
 export const TicketManagement: React.FC<ITicketManagementProps> = (props) => {
-  const { isDarkTheme, context, onNavigateBack } = props;
-  const [tickets, setTickets] = useState<ITicket[]>([]);
-  const [filteredTickets, setFilteredTickets] = useState<ITicket[]>([]);
+  const { isDarkTheme, spService, onNavigateBack } = props;
+  const [tickets, setTickets] = useState<any[]>([]);
+  const [filteredTickets, setFilteredTickets] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [selectedTicket, setSelectedTicket] = useState<ITicket | null>(null);
-  const [agents, setAgents] = useState<{id: string, siteUserId: number, name: string}[]>([]);
+  const [selectedTicket, setSelectedTicket] = useState<any | null>(null);
+  const [comments, setComments] = useState<any[]>([]);
+  const [newComment, setNewComment] = useState('');
+  const [currentUser, setCurrentUser] = useState<any>(null);
   const [confirmDialog, setConfirmDialog] = useState<{message: string, onConfirm: () => void} | null>(null);
 
-  // Pending changes in detail panel
-  const [pendingStatus, setPendingStatus] = useState<string>('');
-  const [pendingAgentId, setPendingAgentId] = useState<number | string>('');
-
-  useEffect(() => {
-    if (selectedTicket) {
-      setPendingStatus(selectedTicket.status);
-      const agent = agents.filter((a: any) => a.name === selectedTicket.assignedTo)[0];
-      setPendingAgentId(agent?.siteUserId || '');
-    }
-  }, [selectedTicket, agents]);
-  
-  // Filters
-  const [statusFilter, setStatusFilter] = useState<string>('All');
-  const [categoryFilter, setCategoryFilter] = useState<string>('All');
+  // Filters & Sort
+  const [statusFilter, setStatusFilter] = useState<string>('Tous');
+  const [myTicketsOnly, setMyTicketsOnly] = useState<boolean>(false);
+  const [sortField, setSortField] = useState<string>('Created');
+  const [sortDescending, setSortDescending] = useState<boolean>(true);
   const [searchQuery, setSearchQuery] = useState<string>('');
 
   useEffect(() => {
-    fetchTickets().catch(err => console.error(err));
+    loadData().catch(err => console.error(err));
   }, []);
 
   useEffect(() => {
-    applyFilters();
-  }, [tickets, statusFilter, categoryFilter, searchQuery]);
+    applyFiltersAndSort();
+  }, [tickets, statusFilter, myTicketsOnly, searchQuery, sortField, sortDescending]);
 
-  const fetchTickets = async (): Promise<void> => {
+  useEffect(() => {
+    if (selectedTicket) {
+      loadComments(selectedTicket.Id).catch(err => console.error(err));
+    }
+  }, [selectedTicket]);
+
+  const loadData = async (): Promise<void> => {
     setIsLoading(true);
     try {
-      const listUrl = `${context.pageContext.web.absoluteUrl}/_api/web/lists/getbytitle('ticket')/items?$select=*,AssignedTo/Title&$expand=AssignedTo`;
-      const response: SPHttpClientResponse = await context.spHttpClient.get(listUrl, SPHttpClient.configurations.v1);
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data.value) {
-          const fetchedTickets: ITicket[] = data.value.map((item: any) => {
-            const status = item.Statut || item.Status || item.status || 'Pending';
-            const category = item.Categorie || item.Category || item.category || 'General';
-            const reference = item.Reference || item.reference || `TK-${item.Id}`;
-            const priority = item.Priority || item.Priorite || 'Medium';
-
-            return {
-              id: reference,
-              spId: item.Id,
-              title: item.Title || item.Titre || 'Untitled',
-              status: status as any,
-              date: item.Created ? new Date(item.Created).toLocaleDateString() : 'N/A',
-              category: category,
-              priority: priority as any,
-              description: item.Description || item.description || 'No description provided.',
-              assignedTo: item.AssignedTo?.Title || item.AttribueA || 'Unassigned'
-            };
-          });
-          setTickets(fetchedTickets);
-        }
-      }
+      const sp = (spService as any)._sp;
+      const user = await sp.web.currentUser();
+      setCurrentUser(user);
+      
+      const fetchedTickets = await spService.getAllTickets();
+      setTickets(fetchedTickets);
     } catch (error) {
-      console.error('Error fetching tickets:', error);
+      console.error('Error loading data:', error);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const fetchAgents = async (): Promise<void> => {
-    try {
-      // Removing $filter because filtering Choice columns via REST often throws 500 errors in SharePoint.
-      // Fetch user/Id as well so we can assign tickets using AssignedToId
-      const listUrl = `${context.pageContext.web.absoluteUrl}/_api/web/lists/getbytitle('user')/items?$select=Id,user/Title,user/Id,role,Role&$expand=user`;
-      console.log('Fetching agents from:', listUrl);
-      const response = await context.spHttpClient.get(listUrl, SPHttpClient.configurations.v1);
-      
-      const data = await response.json();
-      console.log('Raw agents data:', data);
-
-      if (response.ok) {
-        if (data.value) {
-          // Filter locally for 'Agent' role
-          const agentItems = data.value.filter((item: any) => item.role === 'Agent' || item.Role === 'Agent');
-          
-          const fetchedAgents = agentItems.map((item: any) => ({
-            id: item.Id.toString(),
-            siteUserId: item.user?.Id || 0,
-            name: item.user?.Title || item.Title || `Agent ${item.Id}`
-          }));
-          console.log('Mapped agents:', fetchedAgents);
-          setAgents(fetchedAgents);
-        }
-      } else {
-        console.error('Failed to fetch agents:', data);
-      }
-    } catch (error) {
-      console.error('Error fetching agents:', error);
-    }
+  const loadComments = async (ticketId: number) => {
+    const fetchedComments = await spService.getComments(ticketId);
+    setComments(fetchedComments);
   };
 
-  useEffect(() => {
-    if (agents.length === 0) {
-      fetchAgents().catch(err => console.error(err));
-    }
-  }, []);
-
-  const applyFilters = (): void => {
+  const applyFiltersAndSort = (): void => {
     let result = [...tickets];
 
-    if (statusFilter !== 'All') {
-      result = result.filter(t => t.status === statusFilter);
+    if (statusFilter !== 'Tous') {
+      result = result.filter(t => (t.Status || t.Statut) === statusFilter);
     }
 
-    if (categoryFilter !== 'All') {
-      result = result.filter(t => t.category === categoryFilter);
+    if (myTicketsOnly && currentUser) {
+      result = result.filter(t => t.AssignedTo?.Id === currentUser.Id);
     }
 
     if (searchQuery) {
+      const q = searchQuery.toLowerCase();
       result = result.filter(t => 
-        t.title.toLowerCase().indexOf(searchQuery.toLowerCase()) !== -1 ||
-        t.id.toLowerCase().indexOf(searchQuery.toLowerCase()) !== -1
+        (t.Title || '').toLowerCase().indexOf(q) !== -1 ||
+        (t.Reference || '').toLowerCase().indexOf(q) !== -1
       );
     }
+
+    // Sort
+    result.sort((a, b) => {
+      let valA = a[sortField];
+      let valB = b[sortField];
+      
+      if (sortField === 'Created') {
+        valA = new Date(a.Created).getTime();
+        valB = new Date(b.Created).getTime();
+      }
+
+      if (valA < valB) return sortDescending ? 1 : -1;
+      if (valA > valB) return sortDescending ? -1 : 1;
+      return 0;
+    });
 
     setFilteredTickets(result);
   };
 
-  const updateTicket = async (ticketId: string, spId: number | undefined, updates: any, spUpdatePayload: any): Promise<void> => {
+  const handleUpdate = async (spId: number, updates: any, confirmationMsg: string) => {
     setConfirmDialog({
-      message: `Are you sure you want to apply these updates to ticket ${ticketId}?`,
+      message: confirmationMsg,
       onConfirm: async () => {
-        // Optimistic UI update
-        setTickets(prev => prev.map(t => t.id === ticketId ? { ...t, ...updates } : t));
-        if (selectedTicket && selectedTicket.id === ticketId) {
-          setSelectedTicket({ ...selectedTicket, ...updates });
-        }
-
-        if (!spId) {
-           console.error("No SharePoint ID found for ticket", ticketId);
-           return;
-        }
-
         try {
-          const listUrl = `${context.pageContext.web.absoluteUrl}/_api/web/lists/getbytitle('ticket')/items(${spId})`;
-          const response = await context.spHttpClient.post(listUrl, SPHttpClient.configurations.v1, {
-            headers: {
-              'Accept': 'application/json;odata=nometadata',
-              'Content-type': 'application/json;odata=nometadata',
-              'odata-version': '',
-              'IF-MATCH': '*',
-              'X-HTTP-Method': 'MERGE'
-            },
-            body: JSON.stringify(spUpdatePayload)
-          });
-          if (response.ok) {
-            console.log(`Ticket ${ticketId} successfully updated in SharePoint.`);
-          } else {
-            const errAlert = await response.json();
-            alert(`Failed to update ticket in SharePoint: ${errAlert.error?.message?.value || 'Unknown error'}`);
-            // Consider rolling back state if it fails.
-          }
+          await spService.updateTicket(spId, updates);
+          await loadData(); // Reload
         } catch (err) {
-          console.error('Error updating ticket:', err);
-          alert('An unexpected error occurred while saving the update to SharePoint.');
+          alert('Erreur lors de la mise à jour.');
         }
       }
     });
   };
 
+  const handleAddComment = async () => {
+    if (!newComment.trim() || !selectedTicket) return;
+    try {
+      await spService.addComment(selectedTicket.Id, newComment);
+      setNewComment('');
+      loadComments(selectedTicket.Id);
+    } catch (err) {
+      alert('Erreur lors de l’ajout du commentaire.');
+    }
+  };
+
   const getStatusColor = (status: string): string => {
-    const s = status.toLowerCase();
-    if (s.indexOf('resol') !== -1) return '#107c10';
-    if (s.indexOf('progress') !== -1 || s.indexOf('cours') !== -1) return '#0078d4';
-    if (s.indexOf('pending') !== -1 || s.indexOf('attente') !== -1) return '#f58220';
-    return '#6b7280';
+    const s = (status || '').toLowerCase();
+    if (s.indexOf('resol') !== -1) return '#10b981';
+    if (s.indexOf('progress') !== -1 || s.indexOf('cours') !== -1) return '#3b82f6';
+    if (s.indexOf('new') !== -1 || s.indexOf('nouveau') !== -1) return '#f58220';
+    return '#94a3b8';
+  };
+
+  const toggleSort = (field: string) => {
+    if (sortField === field) {
+      setSortDescending(!sortDescending);
+    } else {
+      setSortField(field);
+      setSortDescending(true);
+    }
   };
 
   return (
     <div className={`${styles.ticketManagement} ${isDarkTheme ? styles.dark : ''}`}>
-      <header className={styles.header}>
-        <div className={styles.headerLeft}>
-          <h2>Ticket Management</h2>
-          <p>Manage and process all helpdesk tickets.</p>
-        </div>
-        <button className={styles.backButton} onClick={onNavigateBack}>
-          Back to Admin Dashboard
-        </button>
-      </header>
+      <div className={(styles as any)['glassCard'] || styles.ticketManagement}>
+        <header className={styles.header}>
+          <h2>Gestion des Tickets</h2>
+          <div style={{ display: 'flex', gap: '15px' }}>
+            <button 
+              className={styles.backButton} 
+              style={{ backgroundColor: myTicketsOnly ? 'var(--brand-orange)' : 'transparent', color: myTicketsOnly ? 'white' : 'var(--brand-orange)' }}
+              onClick={() => setMyTicketsOnly(!myTicketsOnly)}
+            >
+              {myTicketsOnly ? 'Voir tous les tickets' : 'Mes tickets uniquement'}
+            </button>
+            <button className={styles.backButton} onClick={onNavigateBack}>
+              Retour Dashboard
+            </button>
+          </div>
+        </header>
 
-      {/* Filters */}
-      <div className={styles.filtersSection}>
-        <div className={styles.filterGroup}>
-          <label>Search</label>
-          <input 
-            type="text" 
-            placeholder="Search by ID or Title..." 
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
+        {/* Filters */}
+        <div className={styles.filtersSection}>
+          <div className={styles.filterGroup}>
+            <label>Recherche</label>
+            <input 
+              type="text" 
+              placeholder="Référence ou Titre..." 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+          <div className={styles.filterGroup}>
+            <label>Statut</label>
+            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+              <option value="Tous">Tous les Statuts</option>
+              <option value="New">Nouveau</option>
+              <option value="In Progress">En cours</option>
+              <option value="Resolved">Résolu</option>
+            </select>
+          </div>
         </div>
-        <div className={styles.filterGroup}>
-          <label>Status</label>
-          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-            <option value="All">All Statuses</option>
-            <option value="Pending">Pending</option>
-            <option value="In Progress">In Progress</option>
-            <option value="Awaiting Feedback">Awaiting Feedback</option>
-            <option value="Resolved">Resolved</option>
-          </select>
-        </div>
-        <div className={styles.filterGroup}>
-          <label>Category</label>
-          <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
-            <option value="All">All Categories</option>
-            <option value="IT Support">IT Support</option>
-            <option value="HR">HR</option>
-            <option value="Hardware">Hardware</option>
-            <option value="Software">Software</option>
-            <option value="Facilities">Facilities</option>
-          </select>
-        </div>
-      </div>
 
-      {/* Ticket Table */}
-      <div className={styles.tableContainer}>
-        {isLoading ? (
-          <div style={{ padding: '40px', textAlign: 'center' }}>Loading tickets...</div>
-        ) : (
-          <table className={styles.ticketTable}>
-            <thead>
-              <tr>
-                <th>Reference</th>
-                <th>Title</th>
-                <th>Status</th>
-                <th>Priority</th>
-                <th>Category</th>
-                <th>Date</th>
-                <th>Assigned To</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredTickets.map(ticket => (
-                <tr key={ticket.id}>
-                  <td style={{ fontWeight: 600 }}>{ticket.id}</td>
-                  <td>{ticket.title}</td>
-                  <td>
-                    <span className={styles.statusBadge} style={{ backgroundColor: getStatusColor(ticket.status) + '20', color: getStatusColor(ticket.status) }}>
-                      {ticket.status}
-                    </span>
-                  </td>
-                  <td>
-                    <span className={ticket.priority === 'High' || ticket.priority === 'Critical' ? styles.priorityHigh : ticket.priority === 'Medium' ? styles.priorityMedium : styles.priorityLow}>
-                      {ticket.priority || 'Medium'}
-                    </span>
-                  </td>
-                  <td>{ticket.category}</td>
-                  <td>{ticket.date}</td>
-                  <td>{ticket.assignedTo}</td>
-                  <td>
-                    <TooltipHost content="Edit Ticket">
-                      <button className={styles.modifyBtn} onClick={() => setSelectedTicket(ticket)}>
-                        <Icon iconName="Edit" />
-                      </button>
-                    </TooltipHost>
-                  </td>
+        {/* Table */}
+        <div className={styles.tableContainer}>
+          {isLoading ? (
+            <div style={{ padding: '40px', textAlign: 'center' }}>Chargement...</div>
+          ) : (
+            <table className={styles.ticketTable}>
+              <thead>
+                <tr>
+                  <th onClick={() => toggleSort('Reference')} style={{ cursor: 'pointer' }}>Référence {sortField === 'Reference' && (sortDescending ? '▼' : '▲')}</th>
+                  <th>Titre</th>
+                  <th>Statut</th>
+                  <th onClick={() => toggleSort('Priorite')} style={{ cursor: 'pointer' }}>Priorité {sortField === 'Priorite' && (sortDescending ? '▼' : '▲')}</th>
+                  <th onClick={() => toggleSort('Created')} style={{ cursor: 'pointer' }}>Date {sortField === 'Created' && (sortDescending ? '▼' : '▲')}</th>
+                  <th>Assigné à</th>
+                  <th>Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+              </thead>
+              <tbody>
+                {filteredTickets.map(ticket => (
+                  <tr key={ticket.Id}>
+                    <td style={{ fontWeight: 700 }} onClick={() => setSelectedTicket(ticket)}>{ticket.Reference || `TK-${ticket.Id}`}</td>
+                    <td onClick={() => setSelectedTicket(ticket)}>{ticket.Title}</td>
+                    <td onClick={() => setSelectedTicket(ticket)}>
+                      <span className={styles.statusBadge} style={{ background: getStatusColor(ticket.Status) + '20', color: getStatusColor(ticket.Status) }}>
+                        {ticket.Status === 'New' ? 'Nouveau' : ticket.Status === 'Resolved' ? 'Résolu' : ticket.Status}
+                      </span>
+                    </td>
+                    <td onClick={() => setSelectedTicket(ticket)}>
+                      <span className={`${(styles as any)['priorityChip']} ${ticket.Priorite === 'Haute' || ticket.Priorite === 'Urgente' ? (styles as any)['high'] : ticket.Priorite === 'Normale' ? (styles as any)['medium'] : (styles as any)['low']}`}>
+                        {ticket.Priorite || 'Normale'}
+                      </span>
+                    </td>
+                    <td onClick={() => setSelectedTicket(ticket)}>{ticket.Created ? new Date(ticket.Created).toLocaleDateString() : 'N/A'}</td>
+                    <td onClick={() => setSelectedTicket(ticket)}>{ticket.AssignedTo?.Title || 'Non assigné'}</td>
+                    <td>
+                      <TooltipHost content="Modifier le Ticket">
+                        <button className={styles.modifyBtn} onClick={() => setSelectedTicket(ticket)}>
+                          <Icon iconName="Edit" />
+                        </button>
+                      </TooltipHost>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
       </div>
 
-      {/* Detail Panel */}
+      {/* Details Side Panel */}
       {selectedTicket && (
         <div className={styles.sidePanel}>
           <div className={styles.panelHeader}>
-            <h3>Ticket Details</h3>
+            <h3>Détails du Ticket</h3>
             <button className={styles.closeButton} onClick={() => setSelectedTicket(null)}>&times;</button>
           </div>
           
           <div className={styles.panelContent}>
             <div className={styles.detailGroup}>
-              <label>Reference</label>
-              <p><strong>{selectedTicket.id}</strong></p>
+              <label>Référence</label>
+              <p><strong>{selectedTicket.Reference || `TK-${selectedTicket.Id}`}</strong></p>
             </div>
             <div className={styles.detailGroup}>
-              <label>Title</label>
-              <p>{selectedTicket.title}</p>
+              <label>Demandeur</label>
+              <p>{selectedTicket.Author?.Title || 'Anonyme'}</p>
             </div>
             <div className={styles.detailGroup}>
-              <label>Description</label>
-              <p>{selectedTicket.description}</p>
-            </div>
-            
-            <div className={styles.detailGroup}>
-              <label>Update Status</label>
+              <label>Statut Actuel</label>
               <select 
-                value={pendingStatus} 
-                onChange={(e) => setPendingStatus(e.target.value)}
+                value={selectedTicket.Status} 
+                onChange={(e) => handleUpdate(selectedTicket.Id, { Status: e.target.value }, `Changer le statut en ${e.target.value} ?`)}
               >
-                <option value="Pending">Pending</option>
-                <option value="In Progress">In Progress</option>
-                <option value="Awaiting Feedback">Awaiting Feedback</option>
-                <option value="Resolved">Resolved</option>
+                <option value="New">Nouveau</option>
+                <option value="In Progress">En cours</option>
+                <option value="Resolved">Résolu</option>
               </select>
             </div>
 
-            <div className={styles.detailGroup}>
-              <label>Assign to Agent</label>
-              <select 
-                value={pendingAgentId} 
-                onChange={(e) => setPendingAgentId(e.target.value)}
+            {/* US-16: Assign to Me */}
+            {selectedTicket.AssignedTo?.Id !== currentUser?.Id && (
+              <button 
+                className={styles.actionButton} 
+                style={{ backgroundColor: '#223445', marginBottom: '10px' }}
+                onClick={() => handleUpdate(selectedTicket.Id, { AssignedToId: currentUser.Id }, 'Voulez-vous vous assigner ce ticket ?')}
               >
-                <option value="">Unassigned</option>
-                {agents.map(agent => (
-                  <option key={agent.id} value={agent.siteUserId}>{agent.name}</option>
-                ))}
-              </select>
+                🙋 Me l'assigner
+              </button>
+            )}
+
+            {/* US-18: Comments */}
+            <div className={styles.detailGroup} style={{ marginTop: '20px' }}>
+              <label>Commentaires (History)</label>
+              <div style={{ maxHeight: '200px', overflowY: 'auto', background: 'rgba(255,255,255,0.2)', padding: '10px', borderRadius: '8px' }}>
+                {comments.length > 0 ? comments.map(c => (
+                  <div key={c.Id} style={{ marginBottom: '8px', fontSize: '0.85rem' }}>
+                    <strong>{c.Author?.Title}</strong>: {c.Commentaire || c.Text}
+                    <div style={{ fontSize: '0.7rem', color: 'gray' }}>{new Date(c.Created).toLocaleString()}</div>
+                  </div>
+                )) : <p style={{ fontSize: '0.8rem', color: 'gray' }}>Aucun commentaire.</p>}
+              </div>
+              <textarea 
+                placeholder="Ajouter un commentaire..."
+                value={newComment}
+                onChange={(e) => setNewComment(e.target.value)}
+                style={{ width: '100%', marginTop: '10px', padding: '10px', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'transparent' }}
+              />
+              <button 
+                className={styles.actionButton} 
+                onClick={handleAddComment}
+                disabled={!newComment.trim()}
+              >
+                Envoyer le commentaire
+              </button>
             </div>
+
+            {selectedTicket.Status !== 'Resolved' && (
+              <button 
+                className={styles.actionButton} 
+                onClick={() => handleUpdate(selectedTicket.Id, { Status: 'Resolved' }, 'Clore ce ticket comme résolu ?')}
+              >
+                ✅ Résoudre le Ticket
+              </button>
+            )}
           </div>
-          
-          <button className={styles.actionButton} onClick={() => {
-            const currentAgent = agents.filter((a: any) => a.name === selectedTicket.assignedTo)[0];
-            const currentAgentId = currentAgent?.siteUserId || '';
-            
-            const statusChanged = pendingStatus !== selectedTicket.status;
-            const agentChanged = pendingAgentId.toString() !== currentAgentId.toString();
-
-            if (statusChanged || agentChanged) {
-              const updates: any = {};
-              const spUpdates: any = {};
-              
-              if (statusChanged) {
-                updates.status = pendingStatus;
-                spUpdates.Status = pendingStatus;
-              }
-              
-              if (agentChanged) {
-                if (!pendingAgentId) {
-                  updates.assignedTo = 'Unassigned';
-                  spUpdates.AssignedToId = null;
-                } else {
-                  const newAgent = agents.filter((a: any) => a.siteUserId.toString() === pendingAgentId.toString())[0];
-                  updates.assignedTo = newAgent?.name || 'Assigned';
-                  spUpdates.AssignedToId = parseInt(pendingAgentId.toString(), 10);
-                }
-              }
-
-              updateTicket(selectedTicket.id, selectedTicket.spId, updates, spUpdates);
-              setSelectedTicket(null); // Close panel after initiating update
-            } else {
-              // No changes, just close
-              setSelectedTicket(null);
-            }
-          }}>
-            Okay
-          </button>
         </div>
       )}
-      {/* Custom Confirmation Modal */}
+
       {confirmDialog && (
         <div className={styles.modalOverlay}>
           <div className={styles.modalContent}>
-            <h3>Confirm Action</h3>
+            <h3>Confirmer</h3>
             <p>{confirmDialog.message}</p>
             <div className={styles.modalActions}>
-              <button className={styles.cancelBtn} onClick={() => setConfirmDialog(null)}>Cancel</button>
-              <button className={styles.confirmBtn} onClick={() => {
-                confirmDialog.onConfirm();
-                setConfirmDialog(null);
-              }}>Confirm</button>
+              <button className={styles.cancelBtn} onClick={() => setConfirmDialog(null)}>Annuler</button>
+              <button className={styles.confirmBtn} onClick={() => { confirmDialog.onConfirm(); setConfirmDialog(null); }}>Confirmer</button>
             </div>
           </div>
         </div>

@@ -5,38 +5,40 @@ import { ITicket, MOCK_ANNOUNCEMENTS } from '../MockData';
 import { escape } from '@microsoft/sp-lodash-subset';
 import { SPHttpClient, SPHttpClientResponse } from '@microsoft/sp-http';
 import { WebPartContext } from '@microsoft/sp-webpart-base';
+import { SPService } from '../../../services/SPService';
 
 export interface IDashboardProps {
     userDisplayName: string;
     userEmail: string;
     isDarkTheme: boolean;
     context: WebPartContext;
+    spService: SPService;
     onNavigateToAdmin?: () => void;
+    onNewTicket?: () => void;
 }
 
 export const HelpdeskDashboard: React.FC<IDashboardProps> = (props) => {
-    const { userDisplayName, isDarkTheme, context, onNavigateToAdmin } = props;
+    const { userDisplayName, isDarkTheme, context, onNavigateToAdmin, onNewTicket, spService } = props;
     const [activeTickets, setActiveTickets] = useState<ITicket[]>([]);
     const [resolvedTickets, setResolvedTickets] = useState<ITicket[]>([]);
     const [isLoading, setIsLoading] = useState<boolean>(true);
-    const [isAdmin, setIsAdmin] = useState<boolean>(false);
+    const [userRole, setUserRole] = useState<'Admin' | 'Agent' | 'User' | null>(null);
 
     useEffect(() => {
         const fetchTickets = async (): Promise<void> => {
             setIsLoading(true);
             try {
-                // Get current user ID (site-specific integer)
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                const userId = (context.pageContext as any).legacyPageContext.userId;
+                const user = await spService._sp.web.currentUser();
                 // Fetch only items created by the current user
-                const listUrl = `${context.pageContext.web.absoluteUrl}/_api/web/lists/getbytitle('ticket')/items?$filter=AuthorId eq ${userId}`;
+                const listUrl = `${context.pageContext.web.absoluteUrl}/_api/web/lists/getbytitle('ticket')/items?$filter=AuthorId eq ${user.Id}`;
                 const response: SPHttpClientResponse = await context.spHttpClient.get(listUrl, SPHttpClient.configurations.v1);
 
                 if (response.ok) {
                     const data = await response.json();
 
                     if (data.value && data.value.length > 0) {
-                        const tickets: ITicket[] = data.value.map((item: { Statut?: string; Status?: string; status?: string; Categorie?: string; Category?: string; category?: string; Reference?: string; reference?: string; Id: number; Title?: string; Titre?: string; Created?: string }) => {
+                        const tickets: ITicket[] = data.value.map((item: any) => {
                             const status = item.Statut || item.Status || item.status || 'Pending';
                             const category = item.Categorie || item.Category || item.category || 'General';
                             const reference = item.Reference || item.reference || `TK-${item.Id}`;
@@ -50,7 +52,6 @@ export const HelpdeskDashboard: React.FC<IDashboardProps> = (props) => {
                             };
                         });
 
-                        // Filter by status (case insensitive and trimming)
                         setActiveTickets(tickets.filter(t => {
                             const s = t.status.toLowerCase().trim();
                             return s !== 'resolved' && s !== 'resolu' && s !== 'résolu';
@@ -59,44 +60,21 @@ export const HelpdeskDashboard: React.FC<IDashboardProps> = (props) => {
                             const s = t.status.toLowerCase().trim();
                             return s === 'resolved' || s === 'resolu' || s === 'résolu';
                         }));
-                    } else {
-                        setActiveTickets([]);
-                        setResolvedTickets([]);
                     }
-                } else {
-                    // Error fetching tickets, but not an unexpected error
                 }
             } catch (error) {
-                console.error('Unexpected error in fetchTickets:', error);
+                console.error('Error fetching tickets:', error);
             } finally {
                 setIsLoading(false);
             }
         };
 
-        const checkUserRole = async (): Promise<void> => {
-            try {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                const userId = (context.pageContext as any).legacyPageContext.userId;
-                
-                // Query custom 'user' list where the Person column 'user' matches current user's ID
-                const listUrl = `${context.pageContext.web.absoluteUrl}/_api/web/lists/getbytitle('user')/items?$filter=userId eq ${userId}&$select=role,status`;
-                const response = await context.spHttpClient.get(listUrl, SPHttpClient.configurations.v1);
-                
-                if (response.ok) {
-                    const data = await response.json();
-                    if (data.value && data.value.length > 0) {
-                        const userRole = data.value[0].role || data.value[0].Role;
-                        if (userRole === 'Admin') {
-                            setIsAdmin(true);
-                        }
-                    }
-                }
-            } catch (error) {
-                console.error('Error checking user role:', error);
-            }
+        const checkRole = async (): Promise<void> => {
+            const role = await spService.getCurrentUserRole();
+            setUserRole(role);
         };
 
-        checkUserRole().catch(err => console.error(err));
+        checkRole().catch(err => console.error(err));
         fetchTickets().catch(err => console.error(err));
     }, [context]);
 
@@ -118,13 +96,19 @@ export const HelpdeskDashboard: React.FC<IDashboardProps> = (props) => {
                         <div className={styles.glassCard}>
                             <h3>Quick Actions</h3>
                             <div className={styles.quickActions}>
-                                {isAdmin && onNavigateToAdmin && (
+                                {userRole === 'Admin' && onNavigateToAdmin && (
                                     <div className={styles.actionButton} onClick={onNavigateToAdmin}>
                                         <span>⚙️</span>
                                         <div>Admin Panel</div>
                                     </div>
                                 )}
-                                <div className={styles.actionButton}>
+                                {userRole === 'Agent' && onNavigateToAdmin && (
+                                    <div className={styles.actionButton} onClick={onNavigateToAdmin} style={{ borderColor: '#f58220' }}>
+                                        <span style={{ filter: 'hue-rotate(180deg)' }}>⚙️</span>
+                                        <div style={{ color: '#f58220', fontWeight: 'bold' }}>Agent Panel</div>
+                                    </div>
+                                )}
+                                <div className={styles.actionButton} onClick={onNewTicket}>
                                     <span>➕</span>
                                     <div>New Ticket</div>
                                 </div>

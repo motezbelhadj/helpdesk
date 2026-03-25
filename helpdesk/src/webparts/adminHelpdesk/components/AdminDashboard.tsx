@@ -3,9 +3,8 @@ import { useState, useEffect } from 'react';
 import styles from './AdminDashboard.module.scss';
 import { escape } from '@microsoft/sp-lodash-subset';
 import { WebPartContext } from '@microsoft/sp-webpart-base';
-import { SPHttpClient, SPHttpClientResponse } from '@microsoft/sp-http';
-import { ITicket } from '../../helpdesk/MockData';
 import { Icon } from '@fluentui/react';
+import { SPService } from '../../../services/SPService';
 
 export interface IAdminDashboardProps {
   userDisplayName: string;
@@ -15,39 +14,21 @@ export interface IAdminDashboardProps {
   onNavigateToTickets: () => void;
   onNavigateToUsers: () => void;
   powerBIReportUrl?: string;
+  onNavigateToAgent?: () => void;
 }
 
 export const AdminDashboard: React.FC<IAdminDashboardProps> = (props) => {
   const { userDisplayName, isDarkTheme, onNavigateBack, context, powerBIReportUrl } = props;
-  const [tickets, setTickets] = useState<ITicket[]>([]);
+  const [tickets, setTickets] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const spService = new SPService(context);
 
   useEffect(() => {
     const fetchAllTickets = async (): Promise<void> => {
       setIsLoading(true);
       try {
-        const listUrl = `${context.pageContext.web.absoluteUrl}/_api/web/lists/getbytitle('ticket')/items`;
-        const response: SPHttpClientResponse = await context.spHttpClient.get(listUrl, SPHttpClient.configurations.v1);
-
-        if (response.ok) {
-          const data = await response.json();
-          if (data.value) {
-            const fetchedTickets: ITicket[] = data.value.map((item: any) => {
-              const status = item.Statut || item.Status || item.status || 'Pending';
-              const category = item.Categorie || item.Category || item.category || 'General';
-              const reference = item.Reference || item.reference || `TK-${item.Id}`;
-
-              return {
-                id: reference,
-                title: item.Title || item.Titre || 'Untitled',
-                status: status as any,
-                date: item.Created ? new Date(item.Created).toLocaleDateString() : 'N/A',
-                category: category
-              };
-            });
-            setTickets(fetchedTickets);
-          }
-        }
+        const fetchedTickets = await spService.getAllTickets();
+        setTickets(fetchedTickets);
       } catch (error) {
         console.error('Error fetching admin data:', error);
       } finally {
@@ -56,46 +37,41 @@ export const AdminDashboard: React.FC<IAdminDashboardProps> = (props) => {
     };
 
     fetchAllTickets().catch(err => console.error(err));
-  }, [context]);
+  }, []);
 
   // Calculations
-  const totalOpen = tickets.filter(t => {
-    const s = t.status.toLowerCase().trim();
-    return s !== 'resolved' && s !== 'resolu' && s !== 'résolu';
-  }).length;
+  const totalOpen = tickets.filter(t => (t.Status || t.Statut) !== 'Resolved').length;
+  const totalResolved = tickets.filter(t => (t.Status || t.Statut) === 'Resolved').length;
+  const pendingTickets = tickets.filter(t => (t.Status || t.Statut) === 'New' || (t.Status || t.Statut) === 'Pending').length;
 
-  const totalResolved = tickets.filter(t => {
-    const s = t.status.toLowerCase().trim();
-    return s === 'resolved' || s === 'resolu' || s === 'résolu';
-  }).length;
+  const highPriority = tickets.filter(t => t.Priority === 'High' || t.Priorite === 'Haute').length;
+  const medPriority = tickets.filter(t => t.Priority === 'Medium' || t.Priorite === 'Moyenne').length;
+  const lowPriority = tickets.filter(t => t.Priority === 'Low' || t.Priorite === 'Basse').length;
 
-  // Mocked for now as we don't have assignment data in the current ITicket interface
-  const unassignedTickets = tickets.filter(t => t.status.toLowerCase() === 'pending').length;
-
-  // Categories distribution
   const categories: {[key: string]: number} = {};
   tickets.forEach(t => {
-    categories[t.category] = (categories[t.category] || 0) + 1;
+    const cat = t.Categorie || t.Category || 'Autre';
+    categories[cat] = (categories[cat] || 0) + 1;
   });
-
-  // Priority distribution (Mocked since Priority field isn't in ITicket yet, using Status as proxy or just showing the logic)
-  const highPriority = Math.round(tickets.length * 0.2); // Placeholder logic
-  const medPriority = Math.round(tickets.length * 0.5);
-  const lowPriority = tickets.length - highPriority - medPriority;
 
   return (
     <div className={`${styles.adminDashboard} ${isDarkTheme ? styles.dark : ''}`}>
         <header className={styles.header}>
             <div className={styles.headerLeft}>
-                <h2>Admin Dashboard</h2>
-                <p>Welcome back, {escape(userDisplayName)}. Here's an overview of the system {isLoading && '(Loading...)'}</p>
+                <h2>Tableau de Bord Admin</h2>
+                <p>Bienvenue, {escape(userDisplayName)}. Voici un aperçu du système {isLoading && '(Chargement...)'}</p>
             </div>
             <div style={{ display: 'flex', gap: '12px' }}>
                 <button className={styles.backButton} style={{ border: '2px solid var(--brand-accent-blue)', color: 'var(--brand-accent-blue)' }} onClick={props.onNavigateToUsers}>
-                    User Management
+                    Gestion Utilisateurs
                 </button>
+                {props.onNavigateToAgent && (
+                    <button className={styles.backButton} style={{ border: '2px solid #f58220', color: '#f58220' }} onClick={props.onNavigateToAgent}>
+                        Mode Agent (Dev)
+                    </button>
+                )}
                 <button className={styles.backButton} onClick={onNavigateBack}>
-                    Switch to User View
+                    Vue Utilisateur
                 </button>
             </div>
         </header>
@@ -104,28 +80,27 @@ export const AdminDashboard: React.FC<IAdminDashboardProps> = (props) => {
         <div className={styles.kpiGrid}>
             <div className={styles.kpiCard}>
                 <div className={styles.kpiValue}>{totalOpen}</div>
-                <div className={styles.kpiLabel}>Total Open Tickets</div>
+                <div className={styles.kpiLabel}>Tickets Ouverts</div>
             </div>
             <div className={styles.kpiCard}>
                 <div className={styles.kpiValue}>{totalResolved}</div>
-                <div className={styles.kpiLabel}>Total Resolved</div>
+                <div className={styles.kpiLabel}>Tickets Résolus</div>
             </div>
             <div className={styles.kpiCard}>
                 <div className={styles.kpiValue}>2.4h</div>
-                <div className={styles.kpiLabel}>Avg Resolution Time</div>
+                <div className={styles.kpiLabel}>Temps de Résolution Moy.</div>
             </div>
             <div className={styles.kpiCard}>
-                <div className={`${styles.kpiValue} ${styles.warningText}`}>{unassignedTickets}</div>
-                <div className={styles.kpiLabel}>Pending Tickets</div>
+                <div className={`${styles.kpiValue} ${styles.warningText}`}>{pendingTickets}</div>
+                <div className={styles.kpiLabel}>Tickets en Attente</div>
             </div>
         </div>
 
         <div className={styles.dashboardGrid}>
-            {/* Charts Area */}
             <div className={styles.mainContent}>
                 <div className={styles.card}>
-                    <h3>Ticket Volume Trend</h3>
-                    <div className={styles.chartMetric}>Showing Real-time distribution by Category</div>
+                    <h3>Tendances par Catégorie</h3>
+                    <div className={styles.chartMetric}>Distribution en temps réel</div>
                     <div className={styles.chartPlaceholder}>
                         <div className={styles.placeholderBars}>
                             {Object.keys(categories).slice(0, 7).map(cat => {
@@ -143,7 +118,7 @@ export const AdminDashboard: React.FC<IAdminDashboardProps> = (props) => {
 
                 <div className={styles.chartsRow}>
                      <div className={styles.card}>
-                        <h3>Tickets by Category</h3>
+                        <h3>Tickets par Catégories</h3>
                         <div className={styles.donutChartPlaceholder}>
                             <div className={styles.donutCenter}>{tickets.length} total</div>
                         </div>
@@ -157,24 +132,24 @@ export const AdminDashboard: React.FC<IAdminDashboardProps> = (props) => {
                         </div>
                     </div>
                     <div className={styles.card}>
-                        <h3>Priority Distribution (Proxy)</h3>
+                        <h3>Distribution des Priorités</h3>
                          <div className={styles.statsList}>
                              <div className={styles.statItem}>
-                                 <div className={styles.statLabel}>High</div>
+                                 <div className={styles.statLabel}>Haute</div>
                                  <div className={styles.statBarWrapper}>
                                     <div className={styles.statBar} style={{width: `${(highPriority/tickets.length)*100}%`, backgroundColor: '#d13438'}}></div>
                                  </div>
                                  <div className={styles.statValue}>{highPriority}</div>
                              </div>
                              <div className={styles.statItem}>
-                                 <div className={styles.statLabel}>Medium</div>
+                                 <div className={styles.statLabel}>Moyenne</div>
                                  <div className={styles.statBarWrapper}>
                                     <div className={styles.statBar} style={{width: `${(medPriority/tickets.length)*100}%`, backgroundColor: '#f58220'}}></div>
                                  </div>
                                  <div className={styles.statValue}>{medPriority}</div>
                              </div>
                              <div className={styles.statItem}>
-                                 <div className={styles.statLabel}>Low</div>
+                                 <div className={styles.statLabel}>Basse</div>
                                  <div className={styles.statBarWrapper}>
                                     <div className={styles.statBar} style={{width: `${(lowPriority/tickets.length)*100}%`, backgroundColor: '#107c10'}}></div>
                                  </div>
@@ -188,8 +163,8 @@ export const AdminDashboard: React.FC<IAdminDashboardProps> = (props) => {
                 {powerBIReportUrl ? (
                     <div className={styles.card}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                            <h3>Live Power BI Report</h3>
-                            <span style={{ fontSize: '0.8em', color: 'var(--text-secondary)' }}>Live Sync Enabled</span>
+                            <h3>Rapport Power BI Live</h3>
+                            <span style={{ fontSize: '0.8em', color: 'var(--text-secondary)' }}>Synchronisation Activée</span>
                         </div>
                         <div className={styles.powerBIContainer}>
                             <iframe
@@ -209,37 +184,35 @@ export const AdminDashboard: React.FC<IAdminDashboardProps> = (props) => {
                                 <Icon iconName="PowerBILogo" />
                             </div>
                             <div className={styles.powerBIText}>
-                                <h4>Advanced Analytics with Power BI</h4>
-                                <p>For more in-depth insights and custom reports, you can connect your SharePoint lists directly to Power BI. Once connected, paste your report URL in the web part properties.</p>
+                                <h4>Analyses Avancées avec Power BI</h4>
+                                <p>Pour des insights plus profonds, connectez vos listes SharePoint à Power BI et collez l'URL ici.</p>
                             </div>
                             <button className={styles.learnMoreBtn} onClick={() => window.open('https://powerbi.microsoft.com/', '_blank')}>
-                                Learn More
+                                En savoir plus
                             </button>
                         </div>
                     </div>
                 )}
             </div>
 
-            {/* Sidebar / Activity Feed */}
             <div className={styles.sidebar}>
                 <div className={styles.card}>
-                    <h3>Recent Tickets</h3>
+                    <h3>Tickets Récents</h3>
                     <div className={styles.activityFeed}>
                         {tickets.slice(0, 5).map(ticket => (
-                            <div key={ticket.id} className={styles.activityItem}>
-                                <div className={`${styles.activityDot} ${ticket.status.toLowerCase().indexOf('resol') !== -1 ? styles.success : ''}`}></div>
+                            <div key={ticket.Id} className={styles.activityItem}>
+                                <div className={`${styles.activityDot} ${(ticket.Status || '').toLowerCase().indexOf('resol') !== -1 ? styles.success : ''}`}></div>
                                 <div className={styles.activityContent}>
-                                    <strong>{ticket.id}</strong>: {ticket.title}
-                                    <div className={styles.activityTime}>{ticket.date} • {ticket.category}</div>
+                                    <strong>{ticket.Reference || `TK-${ticket.Id}`}</strong>: {ticket.Title}
+                                    <div className={styles.activityTime}>{ticket.Created ? new Date(ticket.Created).toLocaleDateString() : 'N/A'} • {ticket.Categorie || 'Autre'}</div>
                                 </div>
                             </div>
                         ))}
                     </div>
-                     <button className={styles.viewAllButton} onClick={props.onNavigateToTickets}>View All Tickets</button>
+                     <button className={styles.viewAllButton} onClick={props.onNavigateToTickets}>Voir tous les Tickets</button>
                 </div>
             </div>
         </div>
-
     </div>
   );
 };
