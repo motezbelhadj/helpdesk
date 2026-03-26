@@ -61,6 +61,19 @@ export class SPService {
         }
     }
 
+    public async getAgentTickets(userId: number): Promise<any[]> {
+        try {
+            return await this._sp.web.lists.getByTitle("ticket").items
+                .select("Id", "Title", "Status", "Created", "Author/Id", "Author/Title", "Reference", "Categorie", "Priorite", "Description", "AssignedTo/Id", "AssignedTo/Title")
+                .expand("Author", "AssignedTo")
+                .filter(`AssignedToId eq ${userId}`)
+                .orderBy("Created", false)();
+        } catch (error) {
+            console.error("Error fetching agent tickets", error);
+            throw error;
+        }
+    }
+
     public async getAgents(): Promise<any[]> {
         try {
             const users = await this._sp.web.lists.getByTitle("user").items

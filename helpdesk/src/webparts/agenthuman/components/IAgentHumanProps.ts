@@ -1,13 +1,11 @@
 import { WebPartContext } from "@microsoft/sp-webpart-base";
 
-export interface IHelpdeskProps {
+export interface IAgentHumanProps {
   description: string;
   isDarkTheme: boolean;
   environmentMessage: string;
   hasTeamsContext: boolean;
   userDisplayName: string;
-  userEmail: string;
   context: WebPartContext;
-  adminPageUrl?: string;
-  agentPageUrl?: string;
+  userPageUrl?: string;
 }

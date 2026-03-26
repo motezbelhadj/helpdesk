@@ -3,11 +3,10 @@ import { IAdminHelpdeskProps } from './IAdminHelpdeskProps';
 import { AdminDashboard } from './AdminDashboard';
 import { TicketManagement } from './TicketManagement';
 import { UserManagement } from './UserManagement';
-import { AgentDashboard } from './AgentDashboard';
 import { SPService } from '../../../services/SPService';
 
 export interface IAdminHelpdeskState {
-  currentView: 'admin' | 'agent' | 'ticket-management' | 'user-management';
+  currentView: 'admin' | 'ticket-management' | 'user-management';
   userRole: 'Admin' | 'Agent' | 'User' | null;
   isLoading: boolean;
 }
@@ -30,7 +29,7 @@ export default class AdminHelpdesk extends React.Component<IAdminHelpdeskProps, 
       const role = await this._spService.getCurrentUserRole();
       this.setState({ 
         userRole: role, 
-        currentView: role === 'Agent' ? 'agent' : 'admin',
+        currentView: role === 'Agent' ? 'ticket-management' : 'admin',
         isLoading: false 
       });
     } catch (error) {
@@ -49,7 +48,7 @@ export default class AdminHelpdesk extends React.Component<IAdminHelpdeskProps, 
     } = this.props;
 
     if (this.state.isLoading) {
-      return <div style={{ padding: '20px', textAlign: 'center' }}>Initialisation...</div>;
+      return <div style={{ padding: '20px', textAlign: 'center' }}>Initializing...</div>;
     }
 
     if (this.state.currentView === 'user-management') {
@@ -57,7 +56,13 @@ export default class AdminHelpdesk extends React.Component<IAdminHelpdeskProps, 
         <UserManagement
           isDarkTheme={isDarkTheme}
           context={context}
-          onNavigateBack={() => this.setState({ currentView: this.state.userRole === 'Agent' ? 'agent' : 'admin' })}
+          onNavigateBack={() => {
+            if (this.state.userRole === 'Agent') {
+              if (userPageUrl) window.location.href = userPageUrl;
+            } else {
+              this.setState({ currentView: 'admin' });
+            }
+          }}
         />
       );
     }
@@ -68,22 +73,13 @@ export default class AdminHelpdesk extends React.Component<IAdminHelpdeskProps, 
           isDarkTheme={isDarkTheme}
           context={context}
           spService={this._spService}
-          onNavigateBack={() => this.setState({ currentView: this.state.userRole === 'Agent' ? 'agent' : 'admin' })}
-        />
-      );
-    }
-
-    if (this.state.currentView === 'agent') {
-      return (
-        <AgentDashboard
-          userDisplayName={userDisplayName}
-          isDarkTheme={isDarkTheme}
-          context={context}
-          spService={this._spService}
           onNavigateBack={() => {
-            if (userPageUrl) window.location.href = userPageUrl;
+            if (this.state.userRole === 'Agent') {
+              if (userPageUrl) window.location.href = userPageUrl;
+            } else {
+              this.setState({ currentView: 'admin' });
+            }
           }}
-          onNavigateToTickets={() => this.setState({ currentView: 'ticket-management' })}
         />
       );
     }
@@ -104,7 +100,6 @@ export default class AdminHelpdesk extends React.Component<IAdminHelpdeskProps, 
           }}
           onNavigateToTickets={() => this.setState({ currentView: 'ticket-management' })}
           onNavigateToUsers={() => this.setState({ currentView: 'user-management' })}
-          onNavigateToAgent={() => this.setState({ currentView: 'agent' })}
         />
       </div>
     );

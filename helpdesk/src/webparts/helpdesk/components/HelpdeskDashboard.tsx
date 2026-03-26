@@ -5,7 +5,9 @@ import { ITicket, MOCK_ANNOUNCEMENTS } from '../MockData';
 import { escape } from '@microsoft/sp-lodash-subset';
 import { SPHttpClient, SPHttpClientResponse } from '@microsoft/sp-http';
 import { WebPartContext } from '@microsoft/sp-webpart-base';
+import { Icon } from '@fluentui/react';
 import { SPService } from '../../../services/SPService';
+import { UserTicketDetails } from './UserTicketDetails';
 
 export interface IDashboardProps {
     userDisplayName: string;
@@ -14,15 +16,18 @@ export interface IDashboardProps {
     context: WebPartContext;
     spService: SPService;
     onNavigateToAdmin?: () => void;
+    onNavigateToAgent?: () => void;
     onNewTicket?: () => void;
 }
 
 export const HelpdeskDashboard: React.FC<IDashboardProps> = (props) => {
-    const { userDisplayName, isDarkTheme, context, onNavigateToAdmin, onNewTicket, spService } = props;
+    const { userDisplayName, isDarkTheme, context, onNavigateToAdmin, onNavigateToAgent, onNewTicket, spService } = props;
     const [activeTickets, setActiveTickets] = useState<ITicket[]>([]);
     const [resolvedTickets, setResolvedTickets] = useState<ITicket[]>([]);
     const [isLoading, setIsLoading] = useState<boolean>(true);
     const [userRole, setUserRole] = useState<'Admin' | 'Agent' | 'User' | null>(null);
+    const [selectedTicketId, setSelectedTicketId] = useState<string | number | null>(null);
+    const [refreshKey, setRefreshKey] = useState(0);
 
     useEffect(() => {
         const fetchTickets = async (): Promise<void> => {
@@ -76,7 +81,15 @@ export const HelpdeskDashboard: React.FC<IDashboardProps> = (props) => {
 
         checkRole().catch(err => console.error(err));
         fetchTickets().catch(err => console.error(err));
-    }, [context]);
+    }, [context, refreshKey]);
+
+    if (selectedTicketId) {
+        return <UserTicketDetails 
+            ticketId={selectedTicketId} 
+            onBack={() => { setSelectedTicketId(null); setRefreshKey(k => k + 1); }} 
+            spService={spService} 
+        />;
+    }
 
     return (
         <div className={`${styles.helpdeskDashboard} ${isDarkTheme ? styles.dark : ''}`}>
@@ -102,10 +115,10 @@ export const HelpdeskDashboard: React.FC<IDashboardProps> = (props) => {
                                         <div>Admin Panel</div>
                                     </div>
                                 )}
-                                {userRole === 'Agent' && onNavigateToAdmin && (
-                                    <div className={styles.actionButton} onClick={onNavigateToAdmin} style={{ borderColor: '#f58220' }}>
-                                        <span style={{ filter: 'hue-rotate(180deg)' }}>⚙️</span>
-                                        <div style={{ color: '#f58220', fontWeight: 'bold' }}>Agent Panel</div>
+                                {userRole === 'Agent' && onNavigateToAgent && (
+                                    <div className={styles.actionButton} onClick={onNavigateToAgent} style={{ borderColor: '#f58220', backgroundColor: '#fffaf5' }}>
+                                        <Icon iconName="Headset" style={{ color: '#f58220', fontSize: '32px' }} />
+                                        <div style={{ color: '#f58220', fontWeight: 'bold' }}>Agent Human</div>
                                     </div>
                                 )}
                                 <div className={styles.actionButton} onClick={onNewTicket}>
@@ -132,7 +145,7 @@ export const HelpdeskDashboard: React.FC<IDashboardProps> = (props) => {
                             const statusKey = ticket.status.replace(/\s+/g, '').charAt(0).toLowerCase() + ticket.status.replace(/\s+/g, '').slice(1);
                             const statusStyle = styles[statusKey as keyof typeof styles] || '';
                             return (
-                                <div key={ticket.id} className={`${styles.statusCard} ${statusStyle}`}>
+                                <div key={ticket.id} className={`${styles.statusCard} ${statusStyle}`} onClick={() => setSelectedTicketId(ticket.id)} style={{ cursor: 'pointer' }}>
                                     <div>
                                         <strong>{ticket.id}</strong>: {ticket.title}
                                         <div style={{ fontSize: '0.8em', color: '#605e5c' }}>{ticket.category} • Created {ticket.date}</div>
@@ -164,7 +177,7 @@ export const HelpdeskDashboard: React.FC<IDashboardProps> = (props) => {
                         <h3>Resolved Recently {isLoading && '(Loading...)'}</h3>
                         {!isLoading && resolvedTickets.length === 0 && <p>No resolved tickets found.</p>}
                         {resolvedTickets.map(ticket => (
-                            <div key={ticket.id} className={styles.statusCard} style={{ borderLeftColor: '#107c10', opacity: 0.8 }}>
+                            <div key={ticket.id} className={styles.statusCard} style={{ borderLeftColor: '#107c10', opacity: 0.8, cursor: 'pointer' }} onClick={() => setSelectedTicketId(ticket.id)}>
                                 <div>
                                     <strong>{ticket.id}</strong>: {ticket.title}
                                     <div style={{ fontSize: '0.8em' }}>{ticket.category} • Resolved {ticket.date}</div>

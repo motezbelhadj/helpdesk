@@ -14,7 +14,6 @@ export interface IAdminDashboardProps {
   onNavigateToTickets: () => void;
   onNavigateToUsers: () => void;
   powerBIReportUrl?: string;
-  onNavigateToAgent?: () => void;
 }
 
 export const AdminDashboard: React.FC<IAdminDashboardProps> = (props) => {
@@ -58,20 +57,15 @@ export const AdminDashboard: React.FC<IAdminDashboardProps> = (props) => {
     <div className={`${styles.adminDashboard} ${isDarkTheme ? styles.dark : ''}`}>
         <header className={styles.header}>
             <div className={styles.headerLeft}>
-                <h2>Tableau de Bord Admin</h2>
-                <p>Bienvenue, {escape(userDisplayName)}. Voici un aperçu du système {isLoading && '(Chargement...)'}</p>
+                <h2>Admin Dashboard</h2>
+                <p>Welcome back, {escape(userDisplayName)}. Here's an overview of the system {isLoading && '(Loading...)'}</p>
             </div>
             <div style={{ display: 'flex', gap: '12px' }}>
                 <button className={styles.backButton} style={{ border: '2px solid var(--brand-accent-blue)', color: 'var(--brand-accent-blue)' }} onClick={props.onNavigateToUsers}>
-                    Gestion Utilisateurs
+                    User Management
                 </button>
-                {props.onNavigateToAgent && (
-                    <button className={styles.backButton} style={{ border: '2px solid #f58220', color: '#f58220' }} onClick={props.onNavigateToAgent}>
-                        Mode Agent (Dev)
-                    </button>
-                )}
                 <button className={styles.backButton} onClick={onNavigateBack}>
-                    Vue Utilisateur
+                    User Portal
                 </button>
             </div>
         </header>
@@ -80,27 +74,27 @@ export const AdminDashboard: React.FC<IAdminDashboardProps> = (props) => {
         <div className={styles.kpiGrid}>
             <div className={styles.kpiCard}>
                 <div className={styles.kpiValue}>{totalOpen}</div>
-                <div className={styles.kpiLabel}>Tickets Ouverts</div>
+                <div className={styles.kpiLabel}>Open Tickets</div>
             </div>
             <div className={styles.kpiCard}>
                 <div className={styles.kpiValue}>{totalResolved}</div>
-                <div className={styles.kpiLabel}>Tickets Résolus</div>
+                <div className={styles.kpiLabel}>Resolved Tickets</div>
             </div>
             <div className={styles.kpiCard}>
                 <div className={styles.kpiValue}>2.4h</div>
-                <div className={styles.kpiLabel}>Temps de Résolution Moy.</div>
+                <div className={styles.kpiLabel}>Avg Resolution Time</div>
             </div>
             <div className={styles.kpiCard}>
                 <div className={`${styles.kpiValue} ${styles.warningText}`}>{pendingTickets}</div>
-                <div className={styles.kpiLabel}>Tickets en Attente</div>
+                <div className={styles.kpiLabel}>Pending Tickets</div>
             </div>
         </div>
 
         <div className={styles.dashboardGrid}>
             <div className={styles.mainContent}>
                 <div className={styles.card}>
-                    <h3>Tendances par Catégorie</h3>
-                    <div className={styles.chartMetric}>Distribution en temps réel</div>
+                    <h3>Trends by Category</h3>
+                    <div className={styles.chartMetric}>Real-time distribution</div>
                     <div className={styles.chartPlaceholder}>
                         <div className={styles.placeholderBars}>
                             {Object.keys(categories).slice(0, 7).map(cat => {
@@ -118,7 +112,7 @@ export const AdminDashboard: React.FC<IAdminDashboardProps> = (props) => {
 
                 <div className={styles.chartsRow}>
                      <div className={styles.card}>
-                        <h3>Tickets par Catégories</h3>
+                        <h3>Tickets by Category</h3>
                         <div className={styles.donutChartPlaceholder}>
                             <div className={styles.donutCenter}>{tickets.length} total</div>
                         </div>
@@ -132,24 +126,24 @@ export const AdminDashboard: React.FC<IAdminDashboardProps> = (props) => {
                         </div>
                     </div>
                     <div className={styles.card}>
-                        <h3>Distribution des Priorités</h3>
+                        <h3>Priority Distribution</h3>
                          <div className={styles.statsList}>
                              <div className={styles.statItem}>
-                                 <div className={styles.statLabel}>Haute</div>
+                                 <div className={styles.statLabel}>High</div>
                                  <div className={styles.statBarWrapper}>
                                     <div className={styles.statBar} style={{width: `${(highPriority/tickets.length)*100}%`, backgroundColor: '#d13438'}}></div>
                                  </div>
                                  <div className={styles.statValue}>{highPriority}</div>
                              </div>
                              <div className={styles.statItem}>
-                                 <div className={styles.statLabel}>Moyenne</div>
+                                 <div className={styles.statLabel}>Medium</div>
                                  <div className={styles.statBarWrapper}>
                                     <div className={styles.statBar} style={{width: `${(medPriority/tickets.length)*100}%`, backgroundColor: '#f58220'}}></div>
                                  </div>
                                  <div className={styles.statValue}>{medPriority}</div>
                              </div>
                              <div className={styles.statItem}>
-                                 <div className={styles.statLabel}>Basse</div>
+                                 <div className={styles.statLabel}>Low</div>
                                  <div className={styles.statBarWrapper}>
                                     <div className={styles.statBar} style={{width: `${(lowPriority/tickets.length)*100}%`, backgroundColor: '#107c10'}}></div>
                                  </div>
@@ -163,8 +157,8 @@ export const AdminDashboard: React.FC<IAdminDashboardProps> = (props) => {
                 {powerBIReportUrl ? (
                     <div className={styles.card}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                            <h3>Rapport Power BI Live</h3>
-                            <span style={{ fontSize: '0.8em', color: 'var(--text-secondary)' }}>Synchronisation Activée</span>
+                            <h3>Live Power BI Report</h3>
+                            <span style={{ fontSize: '0.8em', color: 'var(--text-secondary)' }}>Live Sync Enabled</span>
                         </div>
                         <div className={styles.powerBIContainer}>
                             <iframe
@@ -184,11 +178,11 @@ export const AdminDashboard: React.FC<IAdminDashboardProps> = (props) => {
                                 <Icon iconName="PowerBILogo" />
                             </div>
                             <div className={styles.powerBIText}>
-                                <h4>Analyses Avancées avec Power BI</h4>
-                                <p>Pour des insights plus profonds, connectez vos listes SharePoint à Power BI et collez l'URL ici.</p>
+                                <h4>Advanced Analytics with Power BI</h4>
+                                <p>For deeper insights, connect your SharePoint lists to Power BI and paste the URL here.</p>
                             </div>
                             <button className={styles.learnMoreBtn} onClick={() => window.open('https://powerbi.microsoft.com/', '_blank')}>
-                                En savoir plus
+                                Learn More
                             </button>
                         </div>
                     </div>
@@ -197,19 +191,19 @@ export const AdminDashboard: React.FC<IAdminDashboardProps> = (props) => {
 
             <div className={styles.sidebar}>
                 <div className={styles.card}>
-                    <h3>Tickets Récents</h3>
+                    <h3>Recent Tickets</h3>
                     <div className={styles.activityFeed}>
                         {tickets.slice(0, 5).map(ticket => (
                             <div key={ticket.Id} className={styles.activityItem}>
                                 <div className={`${styles.activityDot} ${(ticket.Status || '').toLowerCase().indexOf('resol') !== -1 ? styles.success : ''}`}></div>
                                 <div className={styles.activityContent}>
                                     <strong>{ticket.Reference || `TK-${ticket.Id}`}</strong>: {ticket.Title}
-                                    <div className={styles.activityTime}>{ticket.Created ? new Date(ticket.Created).toLocaleDateString() : 'N/A'} • {ticket.Categorie || 'Autre'}</div>
+                                    <div className={styles.activityTime}>{ticket.Created ? new Date(ticket.Created).toLocaleDateString() : 'N/A'} • {ticket.Categorie || 'Other'}</div>
                                 </div>
                             </div>
                         ))}
                     </div>
-                     <button className={styles.viewAllButton} onClick={props.onNavigateToTickets}>Voir tous les Tickets</button>
+                     <button className={styles.viewAllButton} onClick={props.onNavigateToTickets}>View All Tickets</button>
                 </div>
             </div>
         </div>

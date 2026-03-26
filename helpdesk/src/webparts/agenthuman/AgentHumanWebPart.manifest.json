@@ -1,0 +1,23 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/spfx/client-side-web-part-manifest.schema.json",
+  "id": "c8e76543-b1c4-4d89-9128-4b77d6a5c123",
+  "alias": "AgentHumanWebPart",
+  "componentType": "WebPart",
+
+  "version": "*",
+  "manifestVersion": 2,
+
+  "requiresCustomScript": false,
+  "supportedHosts": ["SharePointWebPart"],
+
+  "preconfiguredEntries": [{
+    "groupId": "5c034f03-0590-444f-94d0-406cb75fd99d",
+    "group": { "default": "Under Development" },
+    "title": { "default": "Agent Human" },
+    "description": { "default": "Professional Agent Interface for Helpdesk (PFE Project)" },
+    "officeFabricIconFontName": "Headset",
+    "properties": {
+      "description": "AgentHuman"
+    }
+  }]
+}

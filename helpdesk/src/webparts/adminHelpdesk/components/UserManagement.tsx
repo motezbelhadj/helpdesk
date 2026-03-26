@@ -61,7 +61,7 @@ export const UserManagement: React.FC<IUserManagementProps> = (props) => {
     fetchUsers().catch(err => console.error(err));
   }, []);
 
-  const handleRoleChange = async (userId: string, newRole: 'Admin' | 'Agent' | 'User') => {
+  const handleRoleChange = async (userId: string, newRole: 'Admin' | 'Agent' | 'User'): Promise<void> => {
     setConfirmDialog({
       message: `Are you sure you want to change the role to ${newRole}?`,
       onConfirm: async () => {
@@ -91,7 +91,7 @@ export const UserManagement: React.FC<IUserManagementProps> = (props) => {
     });
   };
 
-  const toggleStatus = async (userId: string) => {
+  const toggleStatus = async (userId: string): Promise<void> => {
     const userArray = users.filter((u: IUser) => u.id === userId);
     if (userArray.length === 0) return;
     const user = userArray[0];
@@ -126,7 +126,7 @@ export const UserManagement: React.FC<IUserManagementProps> = (props) => {
     });
   };
 
-  const handleAddUser = async (e: React.FormEvent) => {
+  const handleAddUser = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
     if (!newUserEmail.trim()) {
       alert('Please enter an email address.');

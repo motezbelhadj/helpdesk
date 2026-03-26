@@ -17,11 +17,20 @@
           "manifest": "./src/webparts/adminHelpdesk/AdminHelpdeskWebPart.manifest.json"
         }
       ]
+    },
+    "agent-human-web-part": {
+      "components": [
+        {
+          "entrypoint": "./lib/webparts/agenthuman/AgentHumanWebPart.js",
+          "manifest": "./src/webparts/agenthuman/AgentHumanWebPart.manifest.json"
+        }
+      ]
     }
   },
   "externals": {},
   "localizedResources": {
     "HelpdeskWebPartStrings": "lib/webparts/helpdesk/loc/{locale}.js",
-    "AdminHelpdeskWebPartStrings": "lib/webparts/adminHelpdesk/loc/{locale}.js"
+    "AdminHelpdeskWebPartStrings": "lib/webparts/adminHelpdesk/loc/{locale}.js",
+    "AgentHumanWebPartStrings": "lib/webparts/agenthuman/loc/{locale}.js"
   }
 }

@@ -2,40 +2,37 @@ import * as React from 'react';
 import * as ReactDom from 'react-dom';
 import { Version } from '@microsoft/sp-core-library';
 import {
-  type IPropertyPaneConfiguration,
+  IPropertyPaneConfiguration,
   PropertyPaneTextField
 } from '@microsoft/sp-property-pane';
 import { BaseClientSideWebPart } from '@microsoft/sp-webpart-base';
 import { IReadonlyTheme } from '@microsoft/sp-component-base';
 
-import * as strings from 'HelpdeskWebPartStrings';
-import Helpdesk from './components/Helpdesk';
-import { IHelpdeskProps } from './components/IHelpdeskProps';
+import * as strings from 'AgentHumanWebPartStrings';
+import AgentHuman from './components/AgentHuman';
+import { IAgentHumanProps } from './components/IAgentHumanProps';
 
-export interface IHelpdeskWebPartProps {
+export interface IAgentHumanWebPartProps {
   description: string;
-  adminPageUrl: string;
-  agentPageUrl: string;
+  userPageUrl: string;
 }
 
-export default class HelpdeskWebPart extends BaseClientSideWebPart<IHelpdeskWebPartProps> {
+export default class AgentHumanWebPart extends BaseClientSideWebPart<IAgentHumanWebPartProps> {
 
   private _isDarkTheme: boolean = false;
   private _environmentMessage: string = '';
 
   public render(): void {
-    const element: React.ReactElement<IHelpdeskProps> = React.createElement(
-      Helpdesk,
+    const element: React.ReactElement<IAgentHumanProps> = React.createElement(
+      AgentHuman,
       {
         description: this.properties.description,
         isDarkTheme: this._isDarkTheme,
         environmentMessage: this._environmentMessage,
         hasTeamsContext: !!this.context.sdks.microsoftTeams,
         userDisplayName: this.context.pageContext.user.displayName,
-        userEmail: this.context.pageContext.user.loginName,
         context: this.context,
-        adminPageUrl: this.properties.adminPageUrl,
-        agentPageUrl: this.properties.agentPageUrl
+        userPageUrl: this.properties.userPageUrl
       }
     );
 
@@ -51,26 +48,26 @@ export default class HelpdeskWebPart extends BaseClientSideWebPart<IHelpdeskWebP
 
 
   private _getEnvironmentMessage(): Promise<string> {
-    if (!!this.context.sdks.microsoftTeams) { // running in Teams, office.com or Outlook
+    if (!!this.context.sdks.microsoftTeams) { // running in Teams, office.com or outlook.com
       return this.context.sdks.microsoftTeams.teamsJs.app.getContext()
         .then(context => {
-          let environmentMessage: string = '';
+          let posixDeviceMode = '';
           switch (context.app.host.name) {
             case 'Office': // running in Office
-              environmentMessage = this.context.isServedFromLocalhost ? strings.AppLocalEnvironmentOffice : strings.AppOfficeEnvironment;
+              posixDeviceMode = strings.AppLocalEnvironmentSharePoint;
               break;
             case 'Outlook': // running in Outlook
-              environmentMessage = this.context.isServedFromLocalhost ? strings.AppLocalEnvironmentOutlook : strings.AppOutlookEnvironment;
+              posixDeviceMode = strings.AppLocalEnvironmentSharePoint;
               break;
             case 'Teams': // running in Teams
             case 'TeamsModern':
-              environmentMessage = this.context.isServedFromLocalhost ? strings.AppLocalEnvironmentTeams : strings.AppTeamsTabEnvironment;
+              posixDeviceMode = strings.AppLocalEnvironmentTeams;
               break;
             default:
-              environmentMessage = strings.UnknownEnvironment;
+              throw new Error('Unknown host');
           }
 
-          return environmentMessage;
+          return posixDeviceMode;
         });
     }
 
@@ -117,13 +114,8 @@ export default class HelpdeskWebPart extends BaseClientSideWebPart<IHelpdeskWebP
                 PropertyPaneTextField('description', {
                   label: strings.DescriptionFieldLabel
                 }),
-                PropertyPaneTextField('adminPageUrl', {
-                  label: 'Admin Page URL',
-                  description: 'The URL of the SharePoint page where the Admin web part is hosted.'
-                }),
-                PropertyPaneTextField('agentPageUrl', {
-                  label: 'Agent Page URL',
-                  description: 'The URL of the SharePoint page where the Agent Human web part is hosted.'
+                PropertyPaneTextField('userPageUrl', {
+                  label: 'User Portal URL'
                 })
               ]
             }

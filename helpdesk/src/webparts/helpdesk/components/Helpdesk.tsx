@@ -24,7 +24,8 @@ export default class Helpdesk extends React.Component<IHelpdeskProps, IHelpdeskS
       isDarkTheme,
       userDisplayName,
       userEmail,
-      adminPageUrl
+      adminPageUrl,
+      agentPageUrl
     } = this.props;
 
     return (
@@ -48,6 +49,13 @@ export default class Helpdesk extends React.Component<IHelpdeskProps, IHelpdeskS
                 window.location.href = adminPageUrl;
               } else {
                 alert('Please configure the Admin Page URL in the web part properties first.'); 
+              }
+            }}
+            onNavigateToAgent={() => {
+              if (agentPageUrl) {
+                window.location.href = agentPageUrl;
+              } else {
+                alert('Please configure the Agent Page URL in the web part properties first.');
               }
             }}
           />

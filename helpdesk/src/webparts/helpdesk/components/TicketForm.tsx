@@ -20,17 +20,19 @@ export const TicketForm: React.FunctionComponent<ITicketFormProps> = (props) => 
     const [error, setError] = React.useState<string | null>(null);
 
     const categoryOptions: IDropdownOption[] = [
-        { key: 'Support IT', text: 'Support IT' },
-        { key: 'RH', text: 'RH' },
-        { key: 'Logistique', text: 'Logistique' },
-        { key: 'Autre', text: 'Autre' },
+        { key: 'Hardware', text: 'Hardware' },
+        { key: 'Software', text: 'Software' },
+        { key: 'Support IT', text: 'IT Support' },
+        { key: 'HR', text: 'HR' },
+        { key: 'Functional', text: 'Functional' },
+        { key: 'Other', text: 'Other' },
     ];
 
     const priorityOptions: IDropdownOption[] = [
-        { key: 'Basse', text: 'Basse' },
-        { key: 'Normale', text: 'Normale' },
-        { key: 'Haute', text: 'Haute' },
-        { key: 'Urgente', text: 'Urgente' },
+        { key: 'Low', text: 'Low' },
+        { key: 'Normal', text: 'Normal' },
+        { key: 'High', text: 'High' },
+        { key: 'Urgent', text: 'Urgent' },
     ];
 
     const handleSubmit = async () => {
@@ -43,14 +45,14 @@ export const TicketForm: React.FunctionComponent<ITicketFormProps> = (props) => 
                 Title: title,
                 Reference: refNumber,
                 Categorie: category ? category.key as string : '',
-                Priorite: priority ? priority.key as string : 'Normale',
+                Priorite: priority ? priority.key as string : 'Normal',
                 Description: description,
-                Status: 'New'
+                Status: 'Pending'
             };
 
             await props.spService.createTicket(payload, file);
 
-            setSuccess(`Ticket créé avec succès ! Référence : ${refNumber}`);
+            setSuccess(`Ticket created successfully! Reference: ${refNumber}`);
             setTitle('');
             setCategory(undefined);
             setPriority(undefined);
@@ -61,7 +63,7 @@ export const TicketForm: React.FunctionComponent<ITicketFormProps> = (props) => 
                 props.onClose();
             }, 2500);
         } catch (err) {
-            setError('Échec de la création du ticket. Veuillez réessayer.');
+            setError('Failed to create ticket. Please try again.');
             console.error(err);
         } finally {
             setSubmitting(false);
@@ -72,9 +74,9 @@ export const TicketForm: React.FunctionComponent<ITicketFormProps> = (props) => 
         <div className={styles.ticketFormContainer}>
             <div className={styles.glassCard}>
                 <div className={styles.header}>
-                    <h2>Nouveau Ticket</h2>
+                    <h2>New Ticket</h2>
                     <PrimaryButton 
-                        text="Retour" 
+                        text="Back" 
                         onClick={props.onClose} 
                         className={styles.backButton}
                     />
@@ -93,8 +95,8 @@ export const TicketForm: React.FunctionComponent<ITicketFormProps> = (props) => 
 
                 <Stack tokens={{ childrenGap: 20 }}>
                     <TextField
-                        label="Titre"
-                        placeholder="De quoi s'agit-il ?"
+                        label="Title"
+                        placeholder="What is the issue?"
                         required
                         value={title}
                         onChange={(_, val) => setTitle(val || '')}
@@ -102,8 +104,8 @@ export const TicketForm: React.FunctionComponent<ITicketFormProps> = (props) => 
 
                     <div className={styles.formGrid}>
                         <Dropdown
-                            label="Catégorie"
-                            placeholder="Choisir une catégorie"
+                            label="Category"
+                            placeholder="Select a category"
                             required
                             options={categoryOptions}
                             selectedKey={category ? category.key : undefined}
@@ -111,8 +113,8 @@ export const TicketForm: React.FunctionComponent<ITicketFormProps> = (props) => 
                         />
 
                         <Dropdown
-                            label="Priorité"
-                            placeholder="Choisir l'urgence"
+                            label="Priority"
+                            placeholder="Select urgency"
                             required
                             options={priorityOptions}
                             selectedKey={priority ? priority.key : undefined}
@@ -122,7 +124,7 @@ export const TicketForm: React.FunctionComponent<ITicketFormProps> = (props) => 
 
                     <TextField
                         label="Description"
-                        placeholder="Décrivez votre problème en détail..."
+                        placeholder="Describe your issue in detail..."
                         multiline
                         rows={6}
                         required
@@ -131,14 +133,14 @@ export const TicketForm: React.FunctionComponent<ITicketFormProps> = (props) => 
                     />
 
                     <div className={styles.fileInputWrapper}>
-                        <label className={styles.fieldLabel}>Pièce jointe</label>
+                        <label className={styles.fieldLabel}>Attachment</label>
                         <input type="file" onChange={(e) => setFile(e.target.files ? e.target.files[0] : null)} />
-                        <p style={{ fontSize: '0.8em', color: '#64748b', marginTop: 8 }}>Formats acceptés: Images, PDF, Docs (Max 10MB)</p>
+                        <p style={{ fontSize: '0.8em', color: '#64748b', marginTop: 8 }}>Accepted formats: Images, PDF, Docs (Max 10MB)</p>
                     </div>
 
                     <div className={styles.actions}>
                         <PrimaryButton
-                            text={submitting ? "Envoi en cours..." : "Soumettre le Ticket"}
+                            text={submitting ? "Submitting..." : "Submit Ticket"}
                             onClick={handleSubmit}
                             disabled={submitting || !title || !category || !description}
                             className={styles.submitButton}
