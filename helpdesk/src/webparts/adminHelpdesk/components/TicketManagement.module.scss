@@ -1,76 +1,79 @@
 @import '~@microsoft/sp-office-ui-fabric-core/dist/sass/SPFabricCore.scss';
 
 .ticketManagement {
-  --glass-bg: rgba(255, 255, 255, 0.7);
-  --glass-border: rgba(255, 255, 255, 0.3);
-  --brand-orange: #f58220;
-  --brand-dark: #223445;
-  --text-main: #1e293b;
-  --text-muted: #64748b;
+  --brand-orange: #F58220;
+  --brand-dark-blue: #223445;
+  --brand-accent-blue: #3E5266;
+  --bg-color: #f8f9fa;
+  --card-bg: #ffffff;
+  --text-primary: #223445;
+  --text-secondary: #6B7280;
+  --border-color: #e5e7eb;
   
-  font-family: 'Outfit', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-family: 'Segoe UI', 'Outfit', Tahoma, Geneva, Verdana, sans-serif;
+  color: var(--text-primary);
+  background-color: var(--bg-color);
   min-height: 100vh;
-  padding: 40px;
-  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
-  color: var(--text-main);
+  padding: 32px;
 
   &.dark {
-    --glass-bg: rgba(30, 41, 59, 0.7);
-    --glass-border: rgba(255, 255, 255, 0.1);
-    --text-main: #f8fafc;
-    --text-muted: #94a3b8;
-    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    --bg-color: #111827;
+    --card-bg: #1F2937;
+    --text-primary: #F9FAFB;
+    --text-secondary: #9CA3AF;
+    --border-color: #374151;
   }
-}
-
-.glassCard {
-  background: var(--glass-bg);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid var(--glass-border);
-  border-radius: 20px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-  padding: 30px;
 }
 
 .header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 30px;
+  margin-bottom: 32px;
 
-  h2 {
-    margin: 0;
-    font-size: 2rem;
-    background: linear-gradient(90deg, var(--brand-orange), #ff9a44);
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
+  .headerLeft {
+    h2 {
+      margin: 0 0 8px 0;
+      font-size: 2em;
+      color: var(--text-primary);
+    }
+    p {
+      margin: 0;
+      color: var(--text-secondary);
+      font-size: 1.1em;
+    }
   }
 
   .backButton {
-    background: transparent;
+    background-color: transparent;
     border: 2px solid var(--brand-orange);
     color: var(--brand-orange);
-    padding: 10px 24px;
-    border-radius: 12px;
+    padding: 10px 20px;
+    border-radius: 8px;
     font-weight: 600;
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: all 0.2s;
 
     &:hover {
-      background: var(--brand-orange);
+      background-color: var(--brand-orange);
       color: white;
-      transform: translateY(-2px);
     }
   }
+}
+
+.card {
+  background-color: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+  margin-bottom: 24px;
 }
 
 .filtersSection {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 20px;
-  margin-bottom: 30px;
 
   .filterGroup {
     display: flex;
@@ -79,19 +82,18 @@
 
     label {
       font-size: 0.85rem;
-      font-weight: 600;
-      color: var(--text-muted);
+      font-weight: 700;
+      color: var(--text-secondary);
       text-transform: uppercase;
-      letter-spacing: 0.05em;
+      letter-spacing: 0.5px;
     }
 
     input, select {
-      background: rgba(255, 255, 255, 0.5);
-      border: 1px solid var(--glass-border);
-      border-radius: 10px;
-      padding: 12px 16px;
-      color: var(--text-main);
-      backdrop-filter: blur(4px);
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 10px 14px;
+      color: var(--text-primary);
       outline: none;
       transition: border-color 0.2s;
 
@@ -104,8 +106,6 @@
 
 .tableContainer {
   overflow-x: auto;
-  border-radius: 15px;
-  background: rgba(255, 255, 255, 0.2);
 }
 
 .ticketTable {
@@ -114,40 +114,49 @@
   border-spacing: 0 8px;
   
   th {
-    padding: 15px 20px;
+    padding: 12px 16px;
     text-align: left;
     font-weight: 600;
-    color: var(--text-muted);
+    color: var(--text-secondary);
     font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
   }
 
   tbody tr {
-    background: rgba(255, 255, 255, 0.4);
-    transition: all 0.2s ease;
-    cursor: pointer;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    transition: transform 0.2s, box-shadow 0.2s;
 
     &:hover {
-      transform: scale(1.005);
-      background: rgba(255, 255, 255, 0.6);
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
     }
 
     td {
-      padding: 15px 20px;
+      padding: 16px;
+      border-top: 1px solid var(--border-color);
+      border-bottom: 1px solid var(--border-color);
       
-      &:first-child { border-radius: 12px 0 0 12px; }
-      &:last-child { border-radius: 0 12px 12px 0; }
+      &:first-child { 
+        border-left: 1px solid var(--border-color);
+        border-top-left-radius: 12px; 
+        border-bottom-left-radius: 12px; 
+      }
+      &:last-child { 
+        border-right: 1px solid var(--border-color);
+        border-top-right-radius: 12px; 
+        border-bottom-right-radius: 12px; 
+      }
     }
   }
 }
 
 .statusBadge {
-  padding: 6px 14px;
+  padding: 4px 12px;
   border-radius: 20px;
-  font-size: 0.75rem;
+  font-size: 0.8rem;
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
 }
 
 .priorityChip {
@@ -155,84 +164,11 @@
   align-items: center;
   gap: 6px;
   font-size: 0.85rem;
-  font-weight: 500;
+  font-weight: 600;
 
   &.high { color: #ef4444; }
   &.medium { color: #f59e0b; }
   &.low { color: #10b981; }
-}
-
-.sidePanel {
-  position: fixed;
-  top: 0;
-  right: 0;
-  width: 450px;
-  height: 100vh;
-  background: var(--glass-bg);
-  backdrop-filter: blur(20px);
-  border-left: 1px solid var(--glass-border);
-  box-shadow: -10px 0 30px rgba(0, 0, 0, 0.1);
-  z-index: 1000;
-  display: flex;
-  flex-direction: column;
-  animation: slideIn 0.3s ease-out;
-
-  .panelHeader {
-    padding: 24px;
-    border-bottom: 1px solid var(--glass-border);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-
-    h3 { margin: 0; font-size: 1.5rem; color: var(--brand-orange); }
-    .closeButton { 
-      background: none; border: none; font-size: 2rem; cursor: pointer; color: var(--text-muted); 
-      &:hover { color: var(--brand-orange); }
-    }
-  }
-
-  .panelContent {
-    padding: 24px;
-    overflow-y: auto;
-    flex: 1;
-
-    &::-webkit-scrollbar { width: 6px; }
-    &::-webkit-scrollbar-thumb { background: var(--glass-border); border-radius: 3px; }
-
-    .detailGroup {
-      margin-bottom: 20px;
-      label { display: block; font-size: 0.8rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-bottom: 5px; }
-      p { margin: 0; font-size: 1rem; color: var(--text-main); }
-      select {
-        width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--glass-border); background: var(--glass-bg); color: var(--text-main);
-        &:focus { border-color: var(--brand-orange); outline: none; }
-      }
-    }
-
-    .actionButton {
-      width: 100%; padding: 14px; border-radius: 12px; border: none; background: var(--brand-orange); color: white; font-weight: 700; cursor: pointer; transition: transform 0.2s;
-      &:hover { transform: scale(1.02); }
-      &:disabled { opacity: 0.5; cursor: not-allowed; }
-    }
-  }
-}
-
-.actionButton {
-  margin-top: 20px;
-  background: var(--brand-orange);
-  color: white;
-  border: none;
-  padding: 15px;
-  border-radius: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-
-  &:hover {
-    background: #e67312;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(245, 130, 32, 0.3);
-  }
 }
 
 .modifyBtn {
@@ -245,10 +181,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: 600;
   cursor: pointer;
   transition: all 0.2s;
-  font-size: 1.1em;
 
   &:hover {
     background-color: var(--brand-orange);
@@ -257,41 +191,185 @@
   }
 }
 
+.deleteBtn {
+  background-color: transparent;
+  border: 1px solid #ef4444;
+  color: #ef4444;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-left: 8px;
+
+  &:hover {
+    background-color: #ef4444;
+    color: white;
+    transform: scale(1.1);
+  }
+}
+
+.sidePanel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 400px;
+  height: 100vh;
+  background: var(--card-bg);
+  border-left: 1px solid var(--border-color);
+  box-shadow: -10px 0 30px rgba(0, 0, 0, 0.05);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  animation: slideIn 0.3s ease-out;
+
+  .panelHeader {
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    h3 { 
+      margin: 0; 
+      font-size: 1.5rem; 
+      color: var(--brand-orange); 
+      font-weight: 700;
+    }
+    
+    .closeButton { 
+      background: none; 
+      border: none; 
+      font-size: 2.2rem; 
+      cursor: pointer; 
+      color: var(--text-secondary); 
+      line-height: 1;
+      padding-bottom: 4px;
+      &:hover { color: var(--brand-orange); }
+    }
+  }
+
+  .panelContent {
+    padding: 24px;
+    overflow-y: auto;
+    flex: 1;
+
+    &::-webkit-scrollbar { width: 6px; }
+    &::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 3px; }
+
+    .detailGroup {
+      margin-bottom: 28px;
+      
+      label { 
+        display: block; 
+        font-size: 0.8rem; 
+        font-weight: 700; 
+        text-transform: uppercase; 
+        color: var(--text-secondary); 
+        margin-bottom: 10px; 
+        letter-spacing: 0.8px;
+      }
+      
+      p { 
+        margin: 0; 
+        font-size: 1.1rem; 
+        color: var(--text-primary); 
+        line-height: 1.5;
+        font-weight: 500;
+      }
+      
+      select {
+        width: 100%; 
+        padding: 12px 14px; 
+        border-radius: 8px; 
+        border: 1px solid var(--border-color); 
+        background: var(--card-bg); 
+        color: var(--text-primary);
+        font-size: 1rem;
+        outline: none;
+        transition: border-color 0.2s;
+        &:focus { border-color: var(--brand-orange); }
+      }
+    }
+  }
+
+  .panelFooter {
+    padding: 20px 24px;
+    border-top: 1px solid var(--border-color);
+    background-color: var(--card-bg);
+
+    .actionButton {
+      width: 100%; 
+      padding: 14px; 
+      border-radius: 12px; 
+      border: none; 
+      background: var(--brand-orange); 
+      color: white; 
+      font-weight: 700; 
+      font-size: 1rem;
+      cursor: pointer; 
+      transition: all 0.2s;
+      box-shadow: 0 4px 12px rgba(245, 130, 32, 0.2);
+      
+      &:hover { 
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(245, 130, 32, 0.3);
+      }
+      &:disabled { opacity: 0.5; cursor: not-allowed; }
+    }
+  }
+}
+
 .modalOverlay {
   position: fixed;
   top: 0; left: 0; right: 0; bottom: 0;
-  background: rgba(15, 23, 42, 0.6);
-  backdrop-filter: blur(4px);
+  background: rgba(0,0,0,0.5);
   display: flex;
   justify-content: center;
   align-items: center;
   z-index: 2000;
+  animation: fadeIn 0.2s ease;
 }
 
 .modalContent {
-  background: var(--glass-bg);
-  backdrop-filter: blur(16px);
-  border: 1px solid var(--glass-border);
-  padding: 40px;
-  border-radius: 24px;
-  max-width: 450px;
+  background: var(--card-bg);
+  padding: 20px;
+  border-radius: 16px;
+  max-width: 280px;
   width: 90%;
   text-align: center;
-  box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+  box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+  animation: slideUp 0.2s ease;
 
-  h3 { margin-top: 0; color: var(--brand-orange); }
-  p { line-height: 1.6; margin: 20px 0 30px; }
+  h3 { 
+    margin: 0 0 10px 0; 
+    font-size: 1.2rem; 
+    color: #223445;
+    font-weight: 700;
+  }
+
+  p { 
+    line-height: 1.4; 
+    margin-bottom: 20px; 
+    color: #64748b;
+    font-size: 0.85rem;
+  }
 
   .modalActions {
     display: flex;
-    gap: 15px;
+    gap: 8px;
     justify-content: center;
 
     button {
-      padding: 12px 30px;
-      border-radius: 12px;
-      font-weight: 600;
+      flex: 1;
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-weight: 700;
       cursor: pointer;
+      font-size: 0.85rem;
       transition: all 0.2s;
     }
 
@@ -299,14 +377,29 @@
       background: var(--brand-orange);
       color: white;
       border: none;
-      &:hover { background: #e67312; transform: translateY(-2px); }
+      &:hover { background-color: #e67312; }
     }
 
     .cancelBtn {
       background: transparent;
-      border: 1px solid var(--glass-border);
-      color: var(--text-main);
-      &:hover { background: rgba(255,255,255,0.1); }
+      border: 1px solid #e2e8f0;
+      color: #223445;
+      &:hover { background: #f8fafc; }
     }
   }
+}
+
+@keyframes slideIn {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }

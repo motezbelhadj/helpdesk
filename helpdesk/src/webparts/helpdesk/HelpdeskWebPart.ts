@@ -16,6 +16,7 @@ export interface IHelpdeskWebPartProps {
   description: string;
   adminPageUrl: string;
   agentPageUrl: string;
+  agentAIPageUrl: string;
 }
 
 export default class HelpdeskWebPart extends BaseClientSideWebPart<IHelpdeskWebPartProps> {
@@ -35,7 +36,8 @@ export default class HelpdeskWebPart extends BaseClientSideWebPart<IHelpdeskWebP
         userEmail: this.context.pageContext.user.loginName,
         context: this.context,
         adminPageUrl: this.properties.adminPageUrl,
-        agentPageUrl: this.properties.agentPageUrl
+        agentPageUrl: this.properties.agentPageUrl,
+        agentAIPageUrl: this.properties.agentAIPageUrl
       }
     );
 
@@ -124,6 +126,10 @@ export default class HelpdeskWebPart extends BaseClientSideWebPart<IHelpdeskWebP
                 PropertyPaneTextField('agentPageUrl', {
                   label: 'Agent Page URL',
                   description: 'The URL of the SharePoint page where the Agent Human web part is hosted.'
+                }),
+                PropertyPaneTextField('agentAIPageUrl', {
+                  label: 'Agent AI Page URL',
+                  description: 'The URL of the SharePoint page where the Agent AI web part is hosted.'
                 })
               ]
             }

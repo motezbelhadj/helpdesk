@@ -3,12 +3,21 @@ import { Stack, TextField, Dropdown, PrimaryButton, IDropdownOption, MessageBar,
 import { SPService } from '../../../services/SPService';
 import styles from './TicketForm.module.scss';
 
+/**
+ * Properties for the TicketForm component.
+ */
 export interface ITicketFormProps {
-    spService: SPService;
-    currentUserDisplayName: string;
-    onClose: () => void;
+    spService: SPService;           // Service for SharePoint operations
+    currentUserDisplayName: string; // The display name of the current user
+    onClose: () => void;            // Callback to close the form
 }
 
+/**
+ * TicketForm Component
+ * 
+ * Provides a form interface for users to create new helpdesk tickets,
+ * including fields for title, category, priority, and description.
+ */
 export const TicketForm: React.FunctionComponent<ITicketFormProps> = (props) => {
     const [title, setTitle] = React.useState<string>('');
     const [category, setCategory] = React.useState<IDropdownOption>();

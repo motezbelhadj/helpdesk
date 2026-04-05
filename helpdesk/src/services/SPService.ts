@@ -8,6 +8,10 @@ import "@pnp/sp/files";
 import "@pnp/sp/folders";
 import "@pnp/sp/attachments";
 
+/**
+ * Service for interacting with SharePoint using PnPjs.
+ * Handles ticket creation, retrieval, updates, user roles, and comments.
+ */
 export class SPService {
     public _sp: SPFI;
 
@@ -15,6 +19,13 @@ export class SPService {
         this._sp = spfi().using(SPFx(context));
     }
 
+    /**
+     * Creates a new ticket in the SharePoint 'ticket' list.
+     * Optionally adds an attachment to the created item.
+     * 
+     * @param ticketDetails The metadata for the new ticket
+     * @param attachment Optional file attachment
+     */
     public async createTicket(ticketDetails: any, attachment: File | null): Promise<void> {
         try {
             // Get current user to populate Creepar (Person column)
@@ -36,6 +47,12 @@ export class SPService {
         }
     }
 
+    /**
+     * Retrieves all tickets created by a specific user.
+     * 
+     * @param userId The SharePoint ID of the user
+     * @returns A promise that resolves to an array of ticket items
+     */
     public async getUserTickets(userId: number): Promise<any[]> {
         try {
             return await this._sp.web.lists.getByTitle("ticket").items
@@ -49,6 +66,11 @@ export class SPService {
         }
     }
 
+    /**
+     * Retrieves all tickets from the 'ticket' list.
+     * 
+     * @returns A promise that resolves to an array of all ticket items
+     */
     public async getAllTickets(): Promise<any[]> {
         try {
             return await this._sp.web.lists.getByTitle("ticket").items
@@ -61,6 +83,12 @@ export class SPService {
         }
     }
 
+    /**
+     * Retrieves all tickets assigned to a specific agent.
+     * 
+     * @param userId The SharePoint ID of the agent
+     * @returns A promise that resolves to an array of tickets assigned to the agent
+     */
     public async getAgentTickets(userId: number): Promise<any[]> {
         try {
             return await this._sp.web.lists.getByTitle("ticket").items
@@ -74,6 +102,11 @@ export class SPService {
         }
     }
 
+    /**
+     * Retrieves all users with the 'Agent' role from the 'user' list.
+     * 
+     * @returns A promise that resolves to an array of agent users
+     */
     public async getAgents(): Promise<any[]> {
         try {
             const users = await this._sp.web.lists.getByTitle("user").items
@@ -86,6 +119,12 @@ export class SPService {
         }
     }
 
+    /**
+     * Updates an existing ticket item in SharePoint.
+     * 
+     * @param spId The SharePoint ID of the ticket
+     * @param updates An object containing the fields to update
+     */
     public async updateTicket(spId: number, updates: any): Promise<void> {
         try {
             await this._sp.web.lists.getByTitle("ticket").items.getById(spId).update(updates);
@@ -95,6 +134,11 @@ export class SPService {
         }
     }
 
+    /**
+     * Determines the role of the current user based on the 'user' list.
+     * 
+     * @returns A promise that resolves to the user's role string
+     */
     public async getCurrentUserRole(): Promise<'Admin' | 'Agent' | 'User'> {
         try {
             const currentUser = await this._sp.web.currentUser();
@@ -112,6 +156,60 @@ export class SPService {
         }
     }
 
+    /**
+     * Retrieves the SharePoint profile of the current user.
+     * 
+     * @returns A promise that resolves to the current user's profile object
+     */
+    public async getCurrentUserProfile(): Promise<any> {
+        try {
+            return await this._sp.web.currentUser();
+        } catch (error) {
+            console.error("Error fetching current user profile", error);
+            return null;
+        }
+    }
+
+    /**
+     * Retrieves the full item from the 'user' list for the current user.
+     * 
+     * @returns A promise that resolves to the user list item
+     */
+    public async getCurrentUserListItem(): Promise<any> {
+        try {
+            const user = await this._sp.web.currentUser();
+            const items = await this._sp.web.lists.getByTitle("user").items
+                .filter(`user/Id eq ${user.Id}`)
+                .select("Id", "role", "status", "Department", "JobTitle", "Specialization", "PhoneNumber")();
+            
+            return items.length > 0 ? items[0] : null;
+        } catch (error) {
+            console.error("Error fetching current user list item", error);
+            return null;
+        }
+    }
+
+    /**
+     * Updates an existing user profile in the 'user' list.
+     * 
+     * @param itemId The SharePoint ID of the user item
+     * @param updates An object containing the fields to update
+     */
+    public async updateUserProfile(itemId: number, updates: any): Promise<void> {
+        try {
+            await this._sp.web.lists.getByTitle("user").items.getById(itemId).update(updates);
+        } catch (error) {
+            console.error("Error updating user profile", error);
+            throw error;
+        }
+    }
+
+    /**
+     * Calculates statistics (total, open, resolved) for a specific agent.
+     * 
+     * @param userId The SharePoint ID of the agent
+     * @returns A promise that resolves to a stats object
+     */
     public async getAgentStats(userId: number): Promise<any> {
         try {
             const tickets = await this._sp.web.lists.getByTitle("ticket").items
@@ -132,6 +230,12 @@ export class SPService {
         }
     }
 
+    /**
+     * Retrieves all comments for a specific ticket from the 'ticket_comments' list.
+     * 
+     * @param ticketId The SharePoint ID of the ticket
+     * @returns A promise that resolves to an array of comment items
+     */
     public async getComments(ticketId: number): Promise<any[]> {
         try {
             // Attempt to get from ticket_comments list
@@ -146,6 +250,12 @@ export class SPService {
         }
     }
 
+    /**
+     * Adds a new comment to a ticket in the 'ticket_comments' list.
+     * 
+     * @param ticketId The SharePoint ID of the ticket
+     * @param text The content of the comment
+     */
     public async addComment(ticketId: number, text: string): Promise<void> {
         try {
             await this._sp.web.lists.getByTitle("ticket_comments").items.add({
@@ -159,12 +269,31 @@ export class SPService {
         }
     }
 
+    /**
+     * Assigns a ticket to the current user.
+     * 
+     * @param spId The SharePoint ID of the ticket
+     */
     public async assignToMe(spId: number): Promise<void> {
         try {
             const user = await this._sp.web.currentUser();
             await this.updateTicket(spId, { AssignedToId: user.Id });
         } catch (error) {
             console.error("Error assigning ticket to self", error);
+            throw error;
+        }
+    }
+
+    /**
+     * Deletes a ticket from the 'ticket' list.
+     * 
+     * @param itemId The SharePoint ID of the ticket
+     */
+    public async deleteTicket(itemId: number): Promise<void> {
+        try {
+            await this._sp.web.lists.getByTitle("ticket").items.getById(itemId).delete();
+        } catch (error) {
+            console.error("Error deleting ticket", error);
             throw error;
         }
     }

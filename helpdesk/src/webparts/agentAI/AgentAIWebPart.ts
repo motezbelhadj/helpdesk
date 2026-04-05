@@ -2,30 +2,29 @@ import * as React from 'react';
 import * as ReactDom from 'react-dom';
 import { Version } from '@microsoft/sp-core-library';
 import {
-  IPropertyPaneConfiguration,
+  type IPropertyPaneConfiguration,
   PropertyPaneTextField
 } from '@microsoft/sp-property-pane';
 import { BaseClientSideWebPart } from '@microsoft/sp-webpart-base';
 import { IReadonlyTheme } from '@microsoft/sp-component-base';
 
-import * as strings from 'AgentHumanWebPartStrings';
-import AgentHuman from './components/AgentHuman';
-import { IAgentHumanProps } from './components/IAgentHumanProps';
+import * as strings from 'AgentAIWebPartStrings';
+import AgentAIDashboard from './components/AgentAIDashboard';
+import { IAgentAIDashboardProps } from './components/IAgentAIDashboardProps';
 
-export interface IAgentHumanWebPartProps {
+export interface IAgentAIWebPartProps {
   description: string;
-  userPageUrl: string;
-  agentAIPageUrl: string;
+  dashboardPageUrl: string;
 }
 
-export default class AgentHumanWebPart extends BaseClientSideWebPart<IAgentHumanWebPartProps> {
+export default class AgentAIWebPart extends BaseClientSideWebPart<IAgentAIWebPartProps> {
 
   private _isDarkTheme: boolean = false;
   private _environmentMessage: string = '';
 
   public render(): void {
-    const element: React.ReactElement<IAgentHumanProps> = React.createElement(
-      AgentHuman,
+    const element: React.ReactElement<IAgentAIDashboardProps> = React.createElement(
+      AgentAIDashboard,
       {
         description: this.properties.description,
         isDarkTheme: this._isDarkTheme,
@@ -33,8 +32,7 @@ export default class AgentHumanWebPart extends BaseClientSideWebPart<IAgentHuman
         hasTeamsContext: !!this.context.sdks.microsoftTeams,
         userDisplayName: this.context.pageContext.user.displayName,
         context: this.context,
-        userPageUrl: this.properties.userPageUrl,
-        agentAIPageUrl: this.properties.agentAIPageUrl
+        dashboardPageUrl: this.properties.dashboardPageUrl
       }
     );
 
@@ -47,29 +45,27 @@ export default class AgentHumanWebPart extends BaseClientSideWebPart<IAgentHuman
     });
   }
 
-
-
   private _getEnvironmentMessage(): Promise<string> {
-    if (!!this.context.sdks.microsoftTeams) { // running in Teams, office.com or outlook.com
+    if (!!this.context.sdks.microsoftTeams) { 
       return this.context.sdks.microsoftTeams.teamsJs.app.getContext()
         .then(context => {
-          let posixDeviceMode = '';
+          let environmentMessage: string = '';
           switch (context.app.host.name) {
-            case 'Office': // running in Office
-              posixDeviceMode = strings.AppLocalEnvironmentSharePoint;
+            case 'Office':
+              environmentMessage = this.context.isServedFromLocalhost ? strings.AppLocalEnvironmentOffice : strings.AppOfficeEnvironment;
               break;
-            case 'Outlook': // running in Outlook
-              posixDeviceMode = strings.AppLocalEnvironmentSharePoint;
+            case 'Outlook':
+              environmentMessage = this.context.isServedFromLocalhost ? strings.AppLocalEnvironmentOutlook : strings.AppOutlookEnvironment;
               break;
-            case 'Teams': // running in Teams
+            case 'Teams':
             case 'TeamsModern':
-              posixDeviceMode = strings.AppLocalEnvironmentTeams;
+              environmentMessage = this.context.isServedFromLocalhost ? strings.AppLocalEnvironmentTeams : strings.AppTeamsTabEnvironment;
               break;
             default:
-              throw new Error('Unknown host');
+              environmentMessage = strings.UnknownEnvironment;
           }
 
-          return posixDeviceMode;
+          return environmentMessage;
         });
     }
 
@@ -91,7 +87,6 @@ export default class AgentHumanWebPart extends BaseClientSideWebPart<IAgentHuman
       this.domElement.style.setProperty('--link', semanticColors.link || null);
       this.domElement.style.setProperty('--linkHovered', semanticColors.linkHovered || null);
     }
-
   }
 
   protected onDispose(): void {
@@ -116,11 +111,9 @@ export default class AgentHumanWebPart extends BaseClientSideWebPart<IAgentHuman
                 PropertyPaneTextField('description', {
                   label: strings.DescriptionFieldLabel
                 }),
-                PropertyPaneTextField('userPageUrl', {
-                  label: 'User Portal URL'
-                }),
-                PropertyPaneTextField('agentAIPageUrl', {
-                  label: 'Agent AI Page URL'
+                PropertyPaneTextField('dashboardPageUrl', {
+                  label: 'Dashboard Page URL',
+                  description: 'The URL of the SharePoint page where the Helpdesk Dashboard is hosted.'
                 })
               ]
             }

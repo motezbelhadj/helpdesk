@@ -2,13 +2,22 @@ import * as React from 'react';
 import styles from './AgentHuman.module.scss';
 import { Icon } from '@fluentui/react';
 
+/**
+ * Properties for the AgentHumanDashboard component.
+ */
 export interface IDashboardProps {
-  tickets: any[];
-  onNavigateToList: () => void;
-  onNavigateToDetails: (id: number) => void;
-  userPageUrl?: string;
+  tickets: any[];                          // List of tickets assigned to the agent
+  onNavigateToList: () => void;            // Callback to navigate to the full ticket list
+  onNavigateToDetails: (id: number) => void; // Callback to navigate to a specific ticket's details
+  userPageUrl?: string;                    // Optional URL to the user portal
 }
 
+/**
+ * AgentHumanDashboard Component
+ * 
+ * Displays the agent's command center overview, including key performance 
+ * indicators (KPIs) and a list of urgent tickets requiring immediate action.
+ */
 export const AgentHumanDashboard: React.FC<IDashboardProps> = ({ tickets, onNavigateToList, onNavigateToDetails, userPageUrl }) => {
   const stats = {
     pending: tickets.filter(t => t.Status === 'Pending' || t.Statut === 'Nouveau' || t.status === 'Pending').length,
@@ -53,7 +62,7 @@ export const AgentHumanDashboard: React.FC<IDashboardProps> = ({ tickets, onNavi
         </div>
         <div className={styles.kpiCard}>
           <span className={styles.kpiValue} style={{ color: '#10b981' }}>{stats.resolved}</span>
-          <span className={styles.kpiLabel}>Resolved Today</span>
+          <span className={styles.kpiLabel}>Resolved</span>
         </div>
         <div className={styles.kpiCard}>
           <span className={styles.kpiValue} style={{ color: '#ef4444' }}>{stats.urgent}</span>
@@ -83,11 +92,12 @@ export const AgentHumanDashboard: React.FC<IDashboardProps> = ({ tickets, onNavi
                 <tr key={t.Id} onClick={() => onNavigateToDetails(t.Id)}>
                   <td style={{ fontWeight: 700, color: 'var(--brand-dark-blue)' }}>{t.Reference || `TK-${t.Id}`}</td>
                   <td>{t.Title}</td>
-                  <td>{t.Category || 'General'}</td>
+                  <td>{t.Category || t.Categorie || 'General'}</td>
                   <td>
                     <span className={`${styles.status} ${
                       t.Status === 'In Progress' ? styles.inProgress : 
                       t.Status === 'Awaiting Feedback' ? styles.awaitingFeedback :
+                      t.Status === 'Resolved' || t.Status === 'Resolu' || t.status === 'Resolved' ? styles.resolved :
                       styles.pending}`}>
                       {t.Status || 'Pending'}
                     </span>

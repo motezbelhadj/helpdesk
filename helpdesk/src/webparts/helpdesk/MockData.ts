@@ -1,3 +1,6 @@
+/**
+ * Represents a helpdesk ticket object.
+ */
 export interface ITicket {
   id: string; // The Reference ID (e.g. TK-12)
   spId?: number; // Internal SharePoint ID
@@ -11,6 +14,9 @@ export interface ITicket {
   estimatedResolution?: string;
 }
 
+/**
+ * Represents a system announcement or maintenance notification.
+ */
 export interface IAnnouncement {
   id: string;
   title: string;
@@ -68,6 +74,9 @@ export const MOCK_HISTORY: ITicket[] = [
   }
 ];
 
+/**
+ * Represents a user within the helpdesk system.
+ */
 export interface IUser {
   id: string;
   displayName: string;
@@ -75,6 +84,10 @@ export interface IUser {
   role: 'Admin' | 'Agent' | 'User';
   status: 'Active' | 'Inactive';
   lastLogin?: string;
+  department?: string;
+  jobTitle?: string;
+  specialization?: string;
+  phoneNumber?: string;
 }
 
 export const MOCK_USERS: IUser[] = [

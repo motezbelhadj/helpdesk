@@ -4,20 +4,43 @@ import styles from './AgentHuman.module.scss';
 import { SPService } from '../../../services/SPService';
 import { Icon } from '@fluentui/react';
 
+/**
+ * Properties for the AgentHumanTicketDetails component.
+ */
 export interface ITicketDetailsProps {
-  ticketId: number;
-  onBack: () => void;
-  spService: SPService;
+  ticketId: number;           // The SharePoint ID of the ticket to display
+  onBack: () => void;           // Callback to return to the ticket list
+  spService: SPService;        // Service for SharePoint operations
+  agentAIPageUrl?: string;      // Optional URL for the AI assistant
 }
 
-export const AgentHumanTicketDetails: React.FC<ITicketDetailsProps> = ({ ticketId, onBack, spService }) => {
+/**
+ * AgentHumanTicketDetails Component
+ * 
+ * Displays the detailed view of a ticket for the agent, allowing them to 
+ * update status, post comments/internal notes, and view AI-driven suggestions.
+ */
+export const AgentHumanTicketDetails: React.FC<ITicketDetailsProps> = ({ ticketId, onBack, spService, agentAIPageUrl }) => {
   const [ticket, setTicket] = useState<any>(null);
   const [comment, setComment] = useState('');
   const [isUpdating, setIsUpdating] = useState(false);
   const [comments, setComments] = useState<any[]>([]);
+  const [currentUserTitle, setCurrentUserTitle] = useState<string>('');
 
   useEffect(() => {
+    spService.getCurrentUserProfile().then((user: any) => {
+        if (user && user.Title) setCurrentUserTitle(user.Title);
+    });
     loadData();
+  }, [ticketId]);
+
+  // Auto-sync comments every 5 seconds
+  useEffect(() => {
+    if (!ticketId) return;
+    const intervalId = setInterval(() => {
+        spService.getComments(ticketId).then(setComments).catch(console.error);
+    }, 5000);
+    return () => clearInterval(intervalId);
   }, [ticketId]);
 
   const loadData = async () => {
@@ -50,15 +73,40 @@ export const AgentHumanTicketDetails: React.FC<ITicketDetailsProps> = ({ ticketI
     if (!comment) return;
     setIsUpdating(true);
     try {
-      await spService.addComment(ticketId, comment);
+      const newComment = comment;
+      const optimisticComment = {
+        Commentaire: newComment,
+        Text: newComment,
+        Created: new Date().toISOString(),
+        Author: { Title: 'You' }
+      };
+      setComments(prev => [...prev, optimisticComment]);
       setComment('');
-      await loadData();
+      
+      await spService.addComment(ticketId, newComment);
+      
+      setTimeout(() => {
+          loadData().catch(e => console.error(e));
+      }, 1000);
     } catch (error) {
       console.error("Error adding comment", error);
       alert("Failed to post comment. Please verify if the 'ticket_comments' list exists in SharePoint.");
     } finally {
       setIsUpdating(false);
     }
+  };
+
+  const handleExecuteAction = () => {
+    if (!agentAIPageUrl) {
+      alert("Please configure the Agent AI Page URL in the web part properties.");
+      return;
+    }
+    
+    // Pass ticket info to the AI assistant
+    const query = `${ticket.Title}: ${ticket.Description || ''}`;
+    const url = new URL(agentAIPageUrl, window.location.origin);
+    url.searchParams.set('q', query);
+    window.location.href = url.toString();
   };
 
   if (!ticket) return <div className={styles.loading}>Loading Ticket Details...</div>;
@@ -101,15 +149,18 @@ export const AgentHumanTicketDetails: React.FC<ITicketDetailsProps> = ({ ticketI
                 <h3 style={{ margin: 0, border: 'none' }}>Communication Feed</h3>
               </div>
               
-              {(comments || []).map((c: any, i: number) => (
-                <div key={i} className={styles.comment}>
-                  <div className={styles.author}>
-                    <span>{c.Author?.Title || 'You'}</span>
-                    <small style={{ fontWeight: 400, color: '#94a3b8' }}>{new Date(c.Created).toLocaleString()}</small>
+              {(comments || []).map((c: any, i: number) => {
+                const isMe = c.Author?.Title === currentUserTitle || c.Author?.Title === 'You';
+                return (
+                  <div key={i} className={styles.comment} style={isMe ? { borderLeftColor: '#2563eb' } : {}}>
+                    <div className={styles.author}>
+                      <span>{isMe ? 'You' : (c.Author?.Title || 'User')}</span>
+                      <small style={{ fontWeight: 400, color: '#94a3b8' }}>{new Date(c.Created).toLocaleString()}</small>
+                    </div>
+                    <div className={styles.text}>{c.Commentaire || c.Text}</div>
                   </div>
-                  <div className={styles.text}>{c.Commentaire || c.Text}</div>
-                </div>
-              ))}
+                );
+              })}
               
               <div style={{ marginTop: '12px' }}>
                 <textarea 
@@ -172,7 +223,7 @@ export const AgentHumanTicketDetails: React.FC<ITicketDetailsProps> = ({ ticketI
               This request seems related to account access. Suggest verifying the user's role in the primary AD group.
             </p>
             <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
-              <button className={styles.btnPrimary} style={{ flex: 1, fontSize: '0.8rem', padding: '8px' }}>
+              <button className={styles.btnPrimary} style={{ flex: 1, fontSize: '0.8rem', padding: '8px' }} onClick={handleExecuteAction}>
                 Execute Action
               </button>
               <button className={styles.btnPrimary} style={{ flex: 1, fontSize: '0.8rem', padding: '8px', background: 'white', color: '#0369a1', border: '1px solid #0369a1', boxShadow: 'none' }}>

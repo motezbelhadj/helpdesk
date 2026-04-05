@@ -4,25 +4,48 @@ import styles from './Dashboard.module.scss';
 import { SPService } from '../../../services/SPService';
 import { Icon } from '@fluentui/react';
 
+/**
+ * Properties for the UserTicketDetails component.
+ */
 export interface IUserTicketDetailsProps {
-    ticketId: string | number;
-    onBack: () => void;
-    spService: SPService;
+    ticketId: string | number; // The ID or reference of the ticket to display
+    onBack: () => void;         // Callback to return to the dashboard
+    spService: SPService;      // Service for SharePoint operations
 }
 
+/**
+ * UserTicketDetails Component
+ * 
+ * Displays the detailed view of a specific ticket for the user,
+ * including ticket metadata, status, and a conversation feed.
+ */
 export const UserTicketDetails: React.FC<IUserTicketDetailsProps> = ({ ticketId, onBack, spService }) => {
     const [ticket, setTicket] = useState<any>(null);
     const [comment, setComment] = useState('');
     const [isUpdating, setIsUpdating] = useState(false);
     const [comments, setComments] = useState<any[]>([]);
+    const [currentUserTitle, setCurrentUserTitle] = useState<string>('');
 
     useEffect(() => {
         window.scrollTo({ top: 0, behavior: 'smooth' });
+        spService.getCurrentUserProfile().then((user: any) => {
+            if (user && user.Title) setCurrentUserTitle(user.Title);
+        });
     }, []);
 
     useEffect(() => {
         loadData();
     }, [ticketId]);
+
+    // Auto-sync comments every 5 seconds
+    const ticketSPId = ticket?.Id;
+    useEffect(() => {
+        if (!ticketSPId) return;
+        const intervalId = setInterval(() => {
+            spService.getComments(ticketSPId).then(setComments).catch(console.error);
+        }, 5000);
+        return () => clearInterval(intervalId);
+    }, [ticketSPId]);
 
     const loadData = async () => {
         try {
@@ -56,9 +79,21 @@ export const UserTicketDetails: React.FC<IUserTicketDetailsProps> = ({ ticketId,
         if (!comment.trim()) return;
         setIsUpdating(true);
         try {
-            await spService.addComment(ticket.Id, comment);
+            const newComment = comment;
+            const optimisticComment = {
+                Commentaire: newComment,
+                Text: newComment,
+                Created: new Date().toISOString(),
+                Author: { Title: 'You' }
+            };
+            setComments(prev => [...prev, optimisticComment]);
             setComment('');
-            await loadData();
+            
+            await spService.addComment(ticket.Id, newComment);
+            
+            setTimeout(() => {
+                loadData().catch(e => console.error(e));
+            }, 1000);
         } catch (error) {
             console.error("Error adding comment", error);
             alert("Failed to post comment. Please verify the 'ticket_comments' list exists in SharePoint.");
@@ -157,17 +192,20 @@ export const UserTicketDetails: React.FC<IUserTicketDetailsProps> = ({ ticketId,
                                 <p style={{ color: '#64748b', fontStyle: 'italic' }}>No messages yet. Start the conversation!</p>
                             )}
 
-                            {comments.map((c: any, i: number) => (
-                                <div key={i} className={styles.comment}>
+                            {comments.map((c: any, i: number) => {
+                                const isMe = c.Author?.Title === currentUserTitle || c.Author?.Title === 'You';
+                                return (
+                                <div key={i} className={styles.comment} style={isMe ? { borderLeftColor: '#2563eb' } : {}}>
                                     <div className={styles.author}>
-                                        <span>{c.Author?.Title || 'User'}</span>
+                                        <span>{isMe ? 'You' : (c.Author?.Title || 'User')}</span>
                                         <small style={{ fontWeight: 400, color: '#94a3b8' }}>
                                             {new Date(c.Created).toLocaleString()}
                                         </small>
                                     </div>
                                     <div className={styles.text}>{c.Commentaire || c.Text}</div>
                                 </div>
-                            ))}
+                                );
+                            })}
 
                             <div style={{ marginTop: '12px' }}>
                                 <textarea

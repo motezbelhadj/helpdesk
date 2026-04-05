@@ -7,6 +7,14 @@ import { AgentHumanTicketList } from './AgentHumanTicketList';
 import { AgentHumanTicketDetails } from './AgentHumanTicketDetails';
 import { SPService } from '../../../services/SPService';
 
+/**
+ * AgentHuman Component
+ * 
+ * Main container for the Agent web part. Manages navigation between
+ * the agent dashboard, ticket list, and ticket details views.
+ * 
+ * @param props The properties for this component (IAgentHumanProps)
+ */
 export const AgentHuman: React.FC<IAgentHumanProps> = (props) => {
   const [currentView, setCurrentView] = useState<'dashboard' | 'list' | 'details'>('dashboard');
   const [selectedTicketId, setSelectedTicketId] = useState<number | null>(null);
@@ -45,7 +53,7 @@ export const AgentHuman: React.FC<IAgentHumanProps> = (props) => {
       case 'list':
         return <AgentHumanTicketList tickets={tickets} onNavigateToDetails={navigateToDetails} onBack={() => { setCurrentView('dashboard'); setRefreshKey(k => k + 1); }} />;
       case 'details':
-        return <AgentHumanTicketDetails ticketId={selectedTicketId!} onBack={() => { setCurrentView('list'); setRefreshKey(k => k + 1); }} spService={spService} />;
+        return <AgentHumanTicketDetails ticketId={selectedTicketId!} onBack={() => { setCurrentView('list'); setRefreshKey(k => k + 1); }} spService={spService} agentAIPageUrl={props.agentAIPageUrl} />;
       default:
         return <AgentHumanDashboard tickets={tickets} onNavigateToList={() => setCurrentView('list')} onNavigateToDetails={navigateToDetails} />;
     }

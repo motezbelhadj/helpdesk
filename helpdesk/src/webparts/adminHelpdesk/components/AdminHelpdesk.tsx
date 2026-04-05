@@ -5,12 +5,19 @@ import { TicketManagement } from './TicketManagement';
 import { UserManagement } from './UserManagement';
 import { SPService } from '../../../services/SPService';
 
+/**
+ * State for the AdminHelpdesk component.
+ */
 export interface IAdminHelpdeskState {
-  currentView: 'admin' | 'ticket-management' | 'user-management';
-  userRole: 'Admin' | 'Agent' | 'User' | null;
-  isLoading: boolean;
+  currentView: 'admin' | 'ticket-management' | 'user-management'; // Tracks the current active view
+  userRole: 'Admin' | 'Agent' | 'User' | null;                   // Stores the role of the current user
+  isLoading: boolean;                                            // Indicates if the initial data is loading
 }
 
+/**
+ * Main AdminHelpdesk web part component.
+ * Manages navigation between the Admin Dashboard, Ticket Management, and User Management views.
+ */
 export default class AdminHelpdesk extends React.Component<IAdminHelpdeskProps, IAdminHelpdeskState> {
   private _spService: SPService;
 
@@ -56,6 +63,7 @@ export default class AdminHelpdesk extends React.Component<IAdminHelpdeskProps, 
         <UserManagement
           isDarkTheme={isDarkTheme}
           context={context}
+          spService={this._spService}
           onNavigateBack={() => {
             if (this.state.userRole === 'Agent') {
               if (userPageUrl) window.location.href = userPageUrl;

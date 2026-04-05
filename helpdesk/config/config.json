@@ -25,12 +25,21 @@
           "manifest": "./src/webparts/agenthuman/AgentHumanWebPart.manifest.json"
         }
       ]
+    },
+    "agent-ai-web-part": {
+      "components": [
+        {
+          "entrypoint": "./lib/webparts/agentAI/AgentAIWebPart.js",
+          "manifest": "./src/webparts/agentAI/AgentAIWebPart.manifest.json"
+        }
+      ]
     }
   },
   "externals": {},
   "localizedResources": {
     "HelpdeskWebPartStrings": "lib/webparts/helpdesk/loc/{locale}.js",
     "AdminHelpdeskWebPartStrings": "lib/webparts/adminHelpdesk/loc/{locale}.js",
-    "AgentHumanWebPartStrings": "lib/webparts/agenthuman/loc/{locale}.js"
+    "AgentHumanWebPartStrings": "lib/webparts/agenthuman/loc/{locale}.js",
+    "AgentAIWebPartStrings": "lib/webparts/agentAI/loc/{locale}.js"
   }
 }

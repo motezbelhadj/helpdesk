@@ -6,16 +6,25 @@ import { WebPartContext } from '@microsoft/sp-webpart-base';
 import { Icon } from '@fluentui/react';
 import { SPService } from '../../../services/SPService';
 
+/**
+ * Properties for the AdminDashboard component.
+ */
 export interface IAdminDashboardProps {
-  userDisplayName: string;
-  isDarkTheme: boolean;
-  context: WebPartContext;
-  onNavigateBack: () => void;
-  onNavigateToTickets: () => void;
-  onNavigateToUsers: () => void;
-  powerBIReportUrl?: string;
+  userDisplayName: string;       // The display name of the current admin user
+  isDarkTheme: boolean;          // Whether the dark theme is active
+  context: WebPartContext;       // SharePoint context
+  onNavigateBack: () => void;    // Callback to return to the user portal
+  onNavigateToTickets: () => void; // Callback to navigate to ticket management
+  onNavigateToUsers: () => void;  // Callback to navigate to user management
+  powerBIReportUrl?: string;     // Optional URL for an embedded Power BI report
 }
 
+/**
+ * AdminDashboard Component
+ * 
+ * Provides an administrative overview of the helpdesk system, including
+ * high-level metrics, ticket distributions, and navigation to management tools.
+ */
 export const AdminDashboard: React.FC<IAdminDashboardProps> = (props) => {
   const { userDisplayName, isDarkTheme, onNavigateBack, context, powerBIReportUrl } = props;
   const [tickets, setTickets] = useState<any[]>([]);

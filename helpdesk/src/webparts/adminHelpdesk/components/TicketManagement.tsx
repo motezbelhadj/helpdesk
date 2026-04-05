@@ -7,13 +7,25 @@ import { ITicket } from '../../helpdesk/MockData';
 import { Icon, TooltipHost } from '@fluentui/react';
 import { SPService } from '../../../services/SPService';
 
+/**
+ * Properties for the TicketManagement component.
+ */
 export interface ITicketManagementProps {
-  isDarkTheme: boolean;
-  context: WebPartContext;
-  spService?: SPService;
-  onNavigateBack: () => void;
+  isDarkTheme: boolean;             // Indicates if the dark theme is enabled
+  context: WebPartContext;          // SharePoint WebPart context
+  spService?: SPService;            // Optional SharePoint service instance
+  onNavigateBack: () => void;       // Callback to navigate back to the previous screen
 }
 
+/**
+ * TicketManagement Component
+ * 
+ * Renders the interface for managing and processing helpdesk tickets.
+ * Provides functionalities to view, search, filter, and update tickets,
+ * as well as assigning them to agents.
+ * 
+ * @param props The properties for this component (ITicketManagementProps)
+ */
 export const TicketManagement: React.FC<ITicketManagementProps> = (props) => {
   const { isDarkTheme, context, onNavigateBack } = props;
   const [tickets, setTickets] = useState<ITicket[]>([]);
@@ -48,6 +60,10 @@ export const TicketManagement: React.FC<ITicketManagementProps> = (props) => {
     applyFilters();
   }, [tickets, statusFilter, categoryFilter, searchQuery]);
 
+  /**
+   * Fetches the list of all tickets from the SharePoint list.
+   * Maps the raw SharePoint items to the ITicket structure.
+   */
   const fetchTickets = async (): Promise<void> => {
     setIsLoading(true);
     try {
@@ -85,6 +101,10 @@ export const TicketManagement: React.FC<ITicketManagementProps> = (props) => {
     }
   };
 
+  /**
+   * Fetches the list of all agents from the SharePoint 'user' list.
+   * Filters users by the 'Agent' role.
+   */
   const fetchAgents = async (): Promise<void> => {
     try {
       const listUrl = `${context.pageContext.web.absoluteUrl}/_api/web/lists/getbytitle('user')/items?$select=Id,user/Title,user/Id,role,Role&$expand=user`;
@@ -111,6 +131,10 @@ export const TicketManagement: React.FC<ITicketManagementProps> = (props) => {
     }
   }, []);
 
+  /**
+   * Applies the current status, category, and search query filters to the 
+   * fetched tickets and updates the filteredTickets state.
+   */
   const applyFilters = (): void => {
     let result = [...tickets];
 
@@ -132,6 +156,15 @@ export const TicketManagement: React.FC<ITicketManagementProps> = (props) => {
     setFilteredTickets(result);
   };
 
+  /**
+   * Updates a specific ticket both locally and in SharePoint.
+   * Prompts the user for confirmation before making the update.
+   * 
+   * @param ticketId The custom reference ID of the ticket
+   * @param spId The SharePoint list item ID of the ticket
+   * @param updates The local state object updates to apply to the ticket
+   * @param spUpdatePayload The metadata payload object to send to SharePoint
+   */
   const updateTicket = async (ticketId: string, spId: number | undefined, updates: any, spUpdatePayload: any): Promise<void> => {
     setConfirmDialog({
       message: `Are you sure you want to apply these updates to ticket ${ticketId}?`,
@@ -170,6 +203,55 @@ export const TicketManagement: React.FC<ITicketManagementProps> = (props) => {
     });
   };
 
+  /**
+   * Deletes a ticket from SharePoint and updates the local state.
+   * Prompts the user for confirmation before deletion.
+   * 
+   * @param spId The SharePoint list item ID of the ticket
+   * @param reference The reference ID of the ticket (for display)
+   */
+  const handleDeleteTicket = (spId: number | undefined, reference: string): void => {
+    if (!spId) return;
+
+    setConfirmDialog({
+      message: `Are you sure you want to PERMANENTLY delete ticket ${reference}? This action cannot be undone.`,
+      onConfirm: async () => {
+        try {
+          if (props.spService) {
+            await props.spService.deleteTicket(spId);
+            setTickets(prev => prev.filter(t => t.spId !== spId));
+          } else {
+            // Fallback to manual if service not present (though it should be)
+            const listUrl = `${context.pageContext.web.absoluteUrl}/_api/web/lists/getbytitle('ticket')/items(${spId})`;
+            const response = await context.spHttpClient.post(listUrl, SPHttpClient.configurations.v1, {
+              headers: {
+                'Accept': 'application/json;odata=nometadata',
+                'IF-MATCH': '*',
+                'X-HTTP-Method': 'DELETE'
+              }
+            });
+
+            if (response.ok) {
+              setTickets(prev => prev.filter(t => t.spId !== spId));
+            } else {
+              const errData = await response.json();
+              alert(`Failed to delete ticket: ${errData.error?.message?.value || 'Unknown error'}`);
+            }
+          }
+        } catch (err) {
+          console.error('Error deleting ticket:', err);
+          alert('An unexpected error occurred while deleting the ticket.');
+        }
+      }
+    });
+  };
+
+  /**
+   * Determines the corresponding hex color code based on the given ticket status.
+   * 
+   * @param status The status string (e.g., 'Resolved', 'In Progress')
+   * @returns Hexadecimal color string.
+   */
   const getStatusColor = (status: string): string => {
     const s = (status || '').toLowerCase();
     if (s.indexOf('resol') !== -1) return '#107c10';
@@ -182,101 +264,112 @@ export const TicketManagement: React.FC<ITicketManagementProps> = (props) => {
   return (
     <div className={`${styles.ticketManagement} ${isDarkTheme ? styles.dark : ''}`}>
       <header className={styles.header}>
-        <div style={{ display: 'flex', flexDirection: 'column' }}>
+        <div className={styles.headerLeft}>
           <h2>Ticket Management</h2>
-          <p style={{ margin: 0, color: '#64748b', fontSize: '0.95rem' }}>Manage and process all helpdesk tickets.</p>
+          <p>Manage and process all helpdesk tickets. {isLoading && '(Loading...)'}</p>
         </div>
         <button className={styles.backButton} onClick={onNavigateBack}>
-          Back to Admin Dashboard
+          Back to Dashboard
         </button>
       </header>
 
-      {/* Filters */}
-      <div className={styles.filtersSection}>
-        <div className={styles.filterGroup}>
-          <label>Search</label>
-          <input 
-            type="text" 
-            placeholder="Search by ID or Title..." 
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </div>
-        <div className={styles.filterGroup}>
-          <label>Status</label>
-          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-            <option value="All">All Statuses</option>
-            <option value="Pending">Pending</option>
-            <option value="In Progress">In Progress</option>
-            <option value="Awaiting Feedback">Awaiting Feedback</option>
-            <option value="Resolved">Resolved</option>
-          </select>
-        </div>
-        <div className={styles.filterGroup}>
-          <label>Category</label>
-          <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
-            <option value="All">All Categories</option>
-            <option value="IT Support">IT Support</option>
-            <option value="HR">HR</option>
-            <option value="Hardware">Hardware</option>
-            <option value="Software">Software</option>
-            <option value="Facilities">Facilities</option>
-          </select>
+      {/* Filters Card */}
+      <div className={styles.card}>
+        <div className={styles.filtersSection}>
+          <div className={styles.filterGroup}>
+            <label>Search</label>
+            <input 
+              type="text" 
+              placeholder="Search by ID or Title..." 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+          <div className={styles.filterGroup}>
+            <label>Status</label>
+            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+              <option value="All">All Statuses</option>
+              <option value="Pending">Pending</option>
+              <option value="In Progress">In Progress</option>
+              <option value="Awaiting Feedback">Awaiting Feedback</option>
+              <option value="Resolved">Resolved</option>
+            </select>
+          </div>
+          <div className={styles.filterGroup}>
+            <label>Category</label>
+            <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
+              <option value="All">All Categories</option>
+              <option value="IT Support">IT Support</option>
+              <option value="HR">HR</option>
+              <option value="Hardware">Hardware</option>
+              <option value="Software">Software</option>
+              <option value="Facilities">Facilities</option>
+            </select>
+          </div>
         </div>
       </div>
 
-      {/* Ticket Table */}
-      <div className={styles.tableContainer}>
-        {isLoading ? (
-          <div style={{ padding: '40px', textAlign: 'center' }}>Loading tickets...</div>
-        ) : (
-          <table className={styles.ticketTable}>
-            <thead>
-              <tr>
-                <th>Reference</th>
-                <th>Title</th>
-                <th>Status</th>
-                <th>Priority</th>
-                <th>Category</th>
-                <th>Date</th>
-                <th>Assigned To</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredTickets.map(ticket => (
-                <tr key={ticket.id}>
-                  <td style={{ fontWeight: 600 }}>{ticket.id}</td>
-                  <td>{ticket.title}</td>
-                  <td>
-                    <span className={styles.statusBadge} style={{ backgroundColor: getStatusColor(ticket.status) + '20', color: getStatusColor(ticket.status) }}>
-                      {ticket.status}
-                    </span>
-                  </td>
-                  <td>
-                    <span className={`${styles.priorityChip} ${
-                      ticket.priority === 'High' || ticket.priority === 'Critical' ? styles.high :
-                      ticket.priority === 'Medium' ? styles.medium :
-                      styles.low
-                    }`}>
-                      {ticket.priority || 'Medium'}
-                    </span>
-                  </td>
-                  <td>{ticket.category}</td>
-                  <td>{ticket.date}</td>
-                  <td>{ticket.assignedTo}</td>
-                  <td>
-                    <TooltipHost content="Edit Ticket">
-                      <button className={styles.modifyBtn} onClick={() => setSelectedTicket(ticket)}>
-                        <Icon iconName="Edit" />
-                      </button>
-                    </TooltipHost>
-                  </td>
+      {/* Ticket Table Card */}
+      <div className={styles.card}>
+        <div className={styles.tableContainer}>
+          {isLoading ? (
+            <div style={{ padding: '40px', textAlign: 'center' }}>Loading tickets...</div>
+          ) : (
+            <table className={styles.ticketTable}>
+              <thead>
+                <tr>
+                  <th>Reference</th>
+                  <th>Title</th>
+                  <th>Status</th>
+                  <th>Priority</th>
+                  <th>Category</th>
+                  <th>Date</th>
+                  <th>Assigned To</th>
+                  <th>Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+              </thead>
+              <tbody>
+                {filteredTickets.map(ticket => (
+                  <tr key={ticket.id}>
+                    <td style={{ fontWeight: 600 }}>{ticket.id}</td>
+                    <td>{ticket.title}</td>
+                    <td>
+                      <span className={styles.statusBadge} style={{ backgroundColor: getStatusColor(ticket.status) + '20', color: getStatusColor(ticket.status) }}>
+                        {ticket.status}
+                      </span>
+                    </td>
+                    <td>
+                      <span className={`${styles.priorityChip} ${
+                        ticket.priority === 'High' || ticket.priority === 'Critical' ? styles.high :
+                        ticket.priority === 'Medium' ? styles.medium :
+                        styles.low
+                      }`}>
+                        {ticket.priority || 'Medium'}
+                      </span>
+                    </td>
+                    <td>{ticket.category}</td>
+                    <td>{ticket.date}</td>
+                    <td>{ticket.assignedTo}</td>
+                    <td>
+                      <div style={{ display: 'flex' }}>
+                        <TooltipHost content="Edit Ticket">
+                          <button className={styles.modifyBtn} onClick={() => setSelectedTicket(ticket)}>
+                            <Icon iconName="Edit" />
+                          </button>
+                        </TooltipHost>
+                        <TooltipHost content="Delete Ticket">
+                          <button className={styles.deleteBtn} onClick={() => handleDeleteTicket(ticket.spId, ticket.id)}>
+                            <Icon iconName="Delete" />
+                          </button>
+                        </TooltipHost>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
       </div>
 
       {/* Detail Side Panel */}
@@ -328,41 +421,43 @@ export const TicketManagement: React.FC<ITicketManagementProps> = (props) => {
             </div>
           </div>
           
-          <button className={styles.actionButton} onClick={() => {
-            const currentAgent = agents.filter((a: any) => a.name === selectedTicket.assignedTo)[0];
-            const currentAgentId = currentAgent?.siteUserId || '';
-            
-            const statusChanged = pendingStatus !== selectedTicket.status;
-            const agentChanged = pendingAgentId.toString() !== currentAgentId.toString();
+          <div className={styles.panelFooter}>
+            <button className={styles.actionButton} onClick={() => {
+              const currentAgent = agents.filter((a: any) => a.name === selectedTicket.assignedTo)[0];
+              const currentAgentId = currentAgent?.siteUserId || '';
+              
+              const statusChanged = pendingStatus !== selectedTicket.status;
+              const agentChanged = pendingAgentId.toString() !== currentAgentId.toString();
 
-            if (statusChanged || agentChanged) {
-              const updates: any = {};
-              const spUpdates: any = {};
-              
-              if (statusChanged) {
-                updates.status = pendingStatus;
-                spUpdates.Status = pendingStatus;
-              }
-              
-              if (agentChanged) {
-                if (!pendingAgentId) {
-                  updates.assignedTo = 'Unassigned';
-                  spUpdates.AssignedToId = null;
-                } else {
-                  const newAgent = agents.filter((a: any) => a.siteUserId.toString() === pendingAgentId.toString())[0];
-                  updates.assignedTo = newAgent?.name || 'Assigned';
-                  spUpdates.AssignedToId = parseInt(pendingAgentId.toString(), 10);
+              if (statusChanged || agentChanged) {
+                const updates: any = {};
+                const spUpdates: any = {};
+                
+                if (statusChanged) {
+                  updates.status = pendingStatus;
+                  spUpdates.Status = pendingStatus;
                 }
-              }
+                
+                if (agentChanged) {
+                  if (!pendingAgentId) {
+                    updates.assignedTo = 'Unassigned';
+                    spUpdates.AssignedToId = null;
+                  } else {
+                    const newAgent = agents.filter((a: any) => a.siteUserId.toString() === pendingAgentId.toString())[0];
+                    updates.assignedTo = newAgent?.name || 'Assigned';
+                    spUpdates.AssignedToId = parseInt(pendingAgentId.toString(), 10);
+                  }
+                }
 
-              updateTicket(selectedTicket.id, selectedTicket.spId, updates, spUpdates);
-              setSelectedTicket(null);
-            } else {
-              setSelectedTicket(null);
-            }
-          }}>
-            Okay
-          </button>
+                updateTicket(selectedTicket.id, selectedTicket.spId, updates, spUpdates);
+                setSelectedTicket(null);
+              } else {
+                setSelectedTicket(null);
+              }
+            }}>
+              Okay
+            </button>
+          </div>
         </div>
       )}
 

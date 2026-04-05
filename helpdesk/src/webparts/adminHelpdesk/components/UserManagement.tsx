@@ -5,12 +5,24 @@ import { WebPartContext } from '@microsoft/sp-webpart-base';
 import { SPHttpClient, SPHttpClientResponse } from '@microsoft/sp-http';
 import { IUser } from '../../helpdesk/MockData';
 
+import { SPService } from '../../../services/SPService';
+
+/**
+ * Properties for the UserManagement component.
+ */
 export interface IUserManagementProps {
-  isDarkTheme: boolean;
-  context: WebPartContext;
-  onNavigateBack: () => void;
+  isDarkTheme: boolean;          // Whether the dark theme is active
+  context: WebPartContext;       // SharePoint context
+  spService?: SPService;         // Optional SharePoint service instance
+  onNavigateBack: () => void;    // Callback to return to the admin dashboard
 }
 
+/**
+ * UserManagement Component
+ * 
+ * Provides an interface for administrators to manage helpdesk users,
+ * including adding new users, changing roles, and activating/deactivating accounts.
+ */
 export const UserManagement: React.FC<IUserManagementProps> = (props) => {
   const { isDarkTheme, context, onNavigateBack } = props;
   const [users, setUsers] = useState<IUser[]>([]);
@@ -27,27 +39,30 @@ export const UserManagement: React.FC<IUserManagementProps> = (props) => {
     setIsLoading(true);
     setError(null);
     try {
-      // Querying the 'user' list and expanding the 'Personne' (Person) column
-      const listUrl = `${context.pageContext.web.absoluteUrl}/_api/web/lists/getbytitle('user')/items?$select=Id,role,status,user/Title,user/EMail&$expand=user`;
+      // Querying the 'user' list with expanded organizational fields
+      const listUrl = `${context.pageContext.web.absoluteUrl}/_api/web/lists/getbytitle('user')/items?$select=Id,role,status,Department,JobTitle,Specialization,PhoneNumber,user/Title,user/EMail&$expand=user`;
       const response: SPHttpClientResponse = await context.spHttpClient.get(listUrl, SPHttpClient.configurations.v1);
 
       if (response.ok) {
         const data = await response.json();
         if (data.value) {
-          console.log('Raw SharePoint Users Data:', data.value);
           const fetchedUsers: IUser[] = data.value.map((item: any) => ({
             id: item.Id.toString(),
             displayName: item.user?.Title || item.Title || 'Unknown User',
             email: item.user?.EMail || item.email || item.Email || 'No email',
-            role: (item.role || item.Role || 'User') as any, // Default to User if empty
+            role: (item.role || item.Role || 'User') as any,
             status: (item.status || item.Status || 'Active') as any,
-            lastLogin: item.LastLogin ? new Date(item.LastLogin).toLocaleDateString() : 'N/A'
+            lastLogin: item.LastLogin ? new Date(item.LastLogin).toLocaleDateString() : 'N/A',
+            department: item.Department || '',
+            jobTitle: item.JobTitle || '',
+            specialization: item.Specialization || '',
+            phoneNumber: item.PhoneNumber || ''
           }));
           setUsers(fetchedUsers);
         }
       } else {
         const errorData = await response.json();
-        setError(`Failed to fetch users: ${errorData.error ? errorData.error.message.value : response.statusText}. Please ensure a 'user' list exists.`);
+        setError(`Failed to fetch users: ${errorData.error ? errorData.error.message.value : response.statusText}.`);
       }
     } catch (err) {
       console.error('Error fetching users:', err);
@@ -66,29 +81,36 @@ export const UserManagement: React.FC<IUserManagementProps> = (props) => {
       message: `Are you sure you want to change the role to ${newRole}?`,
       onConfirm: async () => {
         try {
-          const listUrl = `${context.pageContext.web.absoluteUrl}/_api/web/lists/getbytitle('user')/items(${userId})`;
-          const response = await context.spHttpClient.post(listUrl, SPHttpClient.configurations.v1, {
-            headers: {
-              'Accept': 'application/json;odata=nometadata',
-              'Content-type': 'application/json;odata=nometadata',
-              'odata-version': '',
-              'IF-MATCH': '*',
-              'X-HTTP-Method': 'MERGE'
-            },
-            body: JSON.stringify({ role: newRole })
-          });
-
-          if (response.ok) {
-            setUsers(prev => prev.map(u => u.id === userId ? { ...u, role: newRole } : u));
-            console.log(`User ${userId} role updated to ${newRole} in SharePoint`);
-          } else {
-            alert('Failed to update role in SharePoint.');
+          if (props.spService) {
+              await props.spService.updateUserProfile(parseInt(userId, 10), { role: newRole });
+              setUsers(prev => prev.map(u => u.id === userId ? { ...u, role: newRole } : u));
           }
         } catch (err) {
           console.error('Error updating role:', err);
+          alert('Failed to update role.');
         }
       }
     });
+
+  };
+
+  /**
+   * Universal field update handler for inline editing.
+   */
+  const handleUpdateUserField = async (userId: string, field: keyof IUser, value: string): Promise<void> => {
+    try {
+        if (props.spService) {
+            const updates: any = {};
+            // Map common display names to internal names if they differ
+            const internalName = field === 'jobTitle' ? 'JobTitle' : field.charAt(0).toUpperCase() + field.slice(1);
+            updates[internalName] = value;
+
+            await props.spService.updateUserProfile(parseInt(userId, 10), updates);
+            setUsers(prev => prev.map(u => u.id === userId ? { ...u, [field]: value } : u));
+        }
+    } catch (err) {
+        console.error(`Error updating user ${field}:`, err);
+    }
   };
 
   const toggleStatus = async (userId: string): Promise<void> => {
@@ -101,26 +123,13 @@ export const UserManagement: React.FC<IUserManagementProps> = (props) => {
       message: `Are you sure you want to change this user's status to ${newStatus}?`,
       onConfirm: async () => {
         try {
-          const listUrl = `${context.pageContext.web.absoluteUrl}/_api/web/lists/getbytitle('user')/items(${userId})`;
-          const response = await context.spHttpClient.post(listUrl, SPHttpClient.configurations.v1, {
-            headers: {
-              'Accept': 'application/json;odata=nometadata',
-              'Content-type': 'application/json;odata=nometadata',
-              'odata-version': '',
-              'IF-MATCH': '*',
-              'X-HTTP-Method': 'MERGE'
-            },
-            body: JSON.stringify({ status: newStatus })
-          });
-
-          if (response.ok) {
-            setUsers(prev => prev.map(u => u.id === userId ? { ...u, status: newStatus } : u));
-            console.log(`User ${userId} status updated to ${newStatus} in SharePoint`);
-          } else {
-            alert('Failed to update status in SharePoint.');
-          }
+            if (props.spService) {
+                await props.spService.updateUserProfile(parseInt(userId, 10), { status: newStatus });
+                setUsers(prev => prev.map(u => u.id === userId ? { ...u, status: newStatus } : u));
+            }
         } catch (err) {
           console.error('Error updating status:', err);
+          alert('Failed to update status.');
         }
       }
     });
@@ -259,10 +268,10 @@ export const UserManagement: React.FC<IUserManagementProps> = (props) => {
             <thead>
               <tr>
                 <th>User</th>
-                <th>Email</th>
+                <th>Details</th>
+                <th>Specialization</th>
                 <th>Role</th>
                 <th>Status</th>
-                <th>Last Login</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -271,8 +280,37 @@ export const UserManagement: React.FC<IUserManagementProps> = (props) => {
                 <tr key={user.id}>
                   <td>
                     <div style={{ fontWeight: 600 }}>{user.displayName}</div>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{user.email}</div>
                   </td>
-                  <td>{user.email}</td>
+                  <td>
+                    <div className={styles.inlineInfo}>
+                        <input 
+                            placeholder="Job Title"
+                            value={user.jobTitle} 
+                            onBlur={(e) => handleUpdateUserField(user.id, 'jobTitle', e.target.value)}
+                            onChange={(e) => setUsers(prev => prev.map(u => u.id === user.id ? { ...u, jobTitle: e.target.value } : u))}
+                        />
+                        <input 
+                            placeholder="Department"
+                            value={user.department} 
+                            onBlur={(e) => handleUpdateUserField(user.id, 'department', e.target.value)}
+                            onChange={(e) => setUsers(prev => prev.map(u => u.id === user.id ? { ...u, department: e.target.value } : u))}
+                        />
+                    </div>
+                  </td>
+                  <td>
+                    <select 
+                      className={styles.specializationSelect}
+                      value={user.specialization} 
+                      onChange={(e) => handleUpdateUserField(user.id, 'specialization', e.target.value)}
+                    >
+                      <option value="">No Spec</option>
+                      <option value="Network">Network</option>
+                      <option value="Hardware">Hardware</option>
+                      <option value="Software">Software</option>
+                      <option value="Cloud">Cloud</option>
+                    </select>
+                  </td>
                   <td>
                     <select 
                       className={styles.actionSelect}
@@ -288,9 +326,6 @@ export const UserManagement: React.FC<IUserManagementProps> = (props) => {
                     <span className={`${styles.statusBadge} ${user.status === 'Active' ? styles.statusActive : styles.statusInactive}`}>
                       {user.status}
                     </span>
-                  </td>
-                  <td style={{ color: 'var(--text-secondary)', fontSize: '0.9em' }}>
-                    {user.lastLogin || 'Never'}
                   </td>
                   <td>
                     <button 

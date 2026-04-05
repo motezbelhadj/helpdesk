@@ -9,25 +9,37 @@ import { Icon } from '@fluentui/react';
 import { SPService } from '../../../services/SPService';
 import { UserTicketDetails } from './UserTicketDetails';
 
+/**
+ * Properties for the HelpdeskDashboard component.
+ */
 export interface IDashboardProps {
-    userDisplayName: string;
-    userEmail: string;
-    isDarkTheme: boolean;
-    context: WebPartContext;
-    spService: SPService;
-    onNavigateToAdmin?: () => void;
-    onNavigateToAgent?: () => void;
-    onNewTicket?: () => void;
+    userDisplayName: string;        // The display name of the current user
+    userEmail: string;              // The email of the current user
+    isDarkTheme: boolean;           // Whether the dark theme is active
+    context: WebPartContext;        // SharePoint context
+    spService: SPService;           // Service for SharePoint operations
+    onNavigateToAdmin?: () => void; // Optional callback for admin navigation
+    onNavigateToAgent?: () => void; // Optional callback for agent navigation
+    onNavigateToAgentAI?: (searchText?: string) => void; // Optional callback for Agent AI navigation
+    onNewTicket?: () => void;       // Optional callback to open new ticket form
+    onNavigateToProfile?: () => void; // Optional callback to open user profile
 }
 
+/**
+ * HelpdeskDashboard Component
+ * 
+ * Displays the user's helpdesk overview, including active tickets, 
+ * resolved tickets, system status, and quick action buttons.
+ */
 export const HelpdeskDashboard: React.FC<IDashboardProps> = (props) => {
-    const { userDisplayName, isDarkTheme, context, onNavigateToAdmin, onNavigateToAgent, onNewTicket, spService } = props;
+    const { userDisplayName, isDarkTheme, context, onNavigateToAdmin, onNavigateToAgent, onNavigateToAgentAI, onNewTicket, onNavigateToProfile, spService } = props;
     const [activeTickets, setActiveTickets] = useState<ITicket[]>([]);
     const [resolvedTickets, setResolvedTickets] = useState<ITicket[]>([]);
     const [isLoading, setIsLoading] = useState<boolean>(true);
     const [userRole, setUserRole] = useState<'Admin' | 'Agent' | 'User' | null>(null);
     const [selectedTicketId, setSelectedTicketId] = useState<string | number | null>(null);
     const [refreshKey, setRefreshKey] = useState(0);
+    const [pendingAgentTicketsCount, setPendingAgentTicketsCount] = useState<number>(0);
 
     useEffect(() => {
         const fetchTickets = async (): Promise<void> => {
@@ -77,6 +89,21 @@ export const HelpdeskDashboard: React.FC<IDashboardProps> = (props) => {
         const checkRole = async (): Promise<void> => {
             const role = await spService.getCurrentUserRole();
             setUserRole(role);
+            if (role === 'Agent') {
+                try {
+                    const userProfile = await spService.getCurrentUserProfile();
+                    if (userProfile && userProfile.Id) {
+                        const tickets = await spService.getAgentTickets(userProfile.Id);
+                        const pendingCount = tickets.filter((t: any) => {
+                            const s = (t.Status || t.Statut || t.status || 'Pending').toLowerCase().trim();
+                            return s === 'pending' || s === 'nouveau';
+                        }).length;
+                        setPendingAgentTicketsCount(pendingCount);
+                    }
+                } catch (e) {
+                    console.error('Error fetching agent tickets for badge', e);
+                }
+            }
         };
 
         checkRole().catch(err => console.error(err));
@@ -98,7 +125,15 @@ export const HelpdeskDashboard: React.FC<IDashboardProps> = (props) => {
                 <h1>Hello, {escape(userDisplayName)}</h1>
                 <p>How can we help you today?</p>
                 <div className={styles.searchInputWrapper}>
-                    <input type="text" placeholder="Describe your issue (e.g., 'I can't access my email')..." />
+                    <input 
+                        type="text" 
+                        placeholder="Describe your issue (e.g., 'I can't access my email')..." 
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter' && onNavigateToAgentAI) {
+                                onNavigateToAgentAI((e.target as HTMLInputElement).value);
+                            }
+                        }}
+                    />
                 </div>
             </header>
 
@@ -116,7 +151,27 @@ export const HelpdeskDashboard: React.FC<IDashboardProps> = (props) => {
                                     </div>
                                 )}
                                 {userRole === 'Agent' && onNavigateToAgent && (
-                                    <div className={styles.actionButton} onClick={onNavigateToAgent} style={{ borderColor: '#f58220', backgroundColor: '#fffaf5' }}>
+                                    <div className={styles.actionButton} onClick={onNavigateToAgent} style={{ borderColor: '#f58220', backgroundColor: '#fffaf5', position: 'relative' }}>
+                                        {pendingAgentTicketsCount > 0 && (
+                                            <div style={{
+                                                position: 'absolute',
+                                                top: '-8px',
+                                                right: '-8px',
+                                                backgroundColor: '#ef4444',
+                                                color: 'white',
+                                                borderRadius: '50%',
+                                                width: '24px',
+                                                height: '24px',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                fontSize: '0.8rem',
+                                                fontWeight: 'bold',
+                                                boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                                            }}>
+                                                {pendingAgentTicketsCount > 99 ? '99+' : pendingAgentTicketsCount}
+                                            </div>
+                                        )}
                                         <Icon iconName="Headset" style={{ color: '#f58220', fontSize: '32px' }} />
                                         <div style={{ color: '#f58220', fontWeight: 'bold' }}>Agent Human</div>
                                     </div>
@@ -125,13 +180,19 @@ export const HelpdeskDashboard: React.FC<IDashboardProps> = (props) => {
                                     <span>➕</span>
                                     <div>New Ticket</div>
                                 </div>
+                                <div className={styles.actionButton} onClick={onNavigateToProfile}>
+                                    <span>👤</span>
+                                    <div>My Profile</div>
+                                </div>
+                                {onNavigateToAgentAI && (
+                                    <div className={styles.actionButton} onClick={() => onNavigateToAgentAI && onNavigateToAgentAI()}>
+                                        <span>🤖</span>
+                                        <div>Agent AI</div>
+                                    </div>
+                                )}
                                 <div className={styles.actionButton}>
                                     <span>❓</span>
                                     <div>Common Fixes</div>
-                                </div>
-                                <div className={styles.actionButton}>
-                                    <span>📋</span>
-                                    <div>My HR Requests</div>
                                 </div>
                             </div>
                         </div>

@@ -3,12 +3,20 @@ import { useState } from 'react';
 import styles from './AgentHuman.module.scss';
 import { Icon } from '@fluentui/react';
 
+/**
+ * Properties for the AgentHumanTicketList component.
+ */
 export interface ITicketListProps {
-  tickets: any[];
-  onNavigateToDetails: (id: number) => void;
-  onBack: () => void;
+  tickets: any[];                          // Full list of tickets assigned to the agent
+  onNavigateToDetails: (id: number) => void; // Callback to navigate to a specific ticket's details
+  onBack: () => void;                      // Callback to return to the agent dashboard
 }
 
+/**
+ * AgentHumanTicketList Component
+ * 
+ * Renders a searchable and filterable table of tickets assigned to the current agent.
+ */
 export const AgentHumanTicketList: React.FC<ITicketListProps> = ({ tickets, onNavigateToDetails, onBack }) => {
   const [filter, setFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
@@ -101,7 +109,8 @@ export const AgentHumanTicketList: React.FC<ITicketListProps> = ({ tickets, onNa
                   t.Status === 'In Progress' ? styles.inProgress : 
                   t.Status === 'Pending' ? styles.pending : 
                   t.Status === 'Awaiting Feedback' ? styles.awaitingFeedback :
-                  styles.resolved}`}>
+                  t.Status === 'Resolved' || t.Status === 'Resolu' || t.status === 'Resolved' ? styles.resolved :
+                  styles.pending}`}>
                   {t.Status || 'Pending'}
                 </span>
               </td>
