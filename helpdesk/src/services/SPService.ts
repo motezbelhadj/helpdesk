@@ -56,10 +56,10 @@ export class SPService {
     public async getUserTickets(userId: number): Promise<any[]> {
         try {
             return await this._sp.web.lists.getByTitle("ticket").items
-                .select("Id", "Title", "Status", "Created", "Author/Id", "Author/Title", "Reference", "Categorie", "Priorite", "Description")
-                .expand("Author")
+                .select("Id", "Title", "Status", "Created", "Modified", "Author/Id", "Author/Title", "Editor/Title", "Reference", "Categorie", "Priorite", "Description")
+                .expand("Author", "Editor")
                 .filter(`Author/Id eq ${userId}`)
-                .orderBy("Created", false)();
+                .orderBy("Modified", false)();
         } catch (error) {
             console.error("Error fetching user tickets", error);
             throw error;

@@ -26,6 +26,20 @@ export interface IDashboardProps {
 }
 
 /**
+ * Interface for a ticket-related notification.
+ */
+export interface ITicketNotification {
+    id: string;             // Unique ID for the notification
+    ticketId: string | number;
+    type: 'status' | 'message' | 'upload';
+    title: string;
+    message: string;
+    date: string;
+    rawDate: Date;
+    isRead: boolean;
+}
+
+/**
  * HelpdeskDashboard Component
  * 
  * Displays the user's helpdesk overview, including active tickets, 
@@ -40,6 +54,9 @@ export const HelpdeskDashboard: React.FC<IDashboardProps> = (props) => {
     const [selectedTicketId, setSelectedTicketId] = useState<string | number | null>(null);
     const [refreshKey, setRefreshKey] = useState(0);
     const [pendingAgentTicketsCount, setPendingAgentTicketsCount] = useState<number>(0);
+    const [hasNotifications, setHasNotifications] = useState<boolean>(false);
+    const [isNotificationPanelOpen, setIsNotificationPanelOpen] = useState<boolean>(false);
+    const [notifications, setNotifications] = useState<ITicketNotification[]>([]);
 
     useEffect(() => {
         const fetchTickets = async (): Promise<void> => {
@@ -77,6 +94,11 @@ export const HelpdeskDashboard: React.FC<IDashboardProps> = (props) => {
                             const s = t.status.toLowerCase().trim();
                             return s === 'resolved' || s === 'resolu' || s === 'résolu';
                         }));
+
+                        // Logic for the red notification point: 
+                        // We will call a separate function to calculate notifications
+                        // including status changes and new messages.
+                        await calculateNotifications(data.value, user.Id);
                     }
                 }
             } catch (error) {
@@ -84,6 +106,66 @@ export const HelpdeskDashboard: React.FC<IDashboardProps> = (props) => {
             } finally {
                 setIsLoading(false);
             }
+        };
+
+        const calculateNotifications = async (rawTickets: any[], currentUserId: number): Promise<void> => {
+            const newNotifications: ITicketNotification[] = [];
+            const seenStatusKey = `helpdesk_seen_status_${currentUserId}`;
+            const seenCommentsKey = `helpdesk_seen_comments_${currentUserId}`;
+            
+            const seenStatus = JSON.parse(localStorage.getItem(seenStatusKey) || '{}');
+            const seenComments = JSON.parse(localStorage.getItem(seenCommentsKey) || '{}');
+            
+            for (const item of rawTickets) {
+                const ticketId = item.Id;
+                const reference = item.Reference || `TK-${item.Id}`;
+                const currentStatus = item.Statut || item.Status || 'Pending';
+                
+                // 1. Check for Status Change
+                // If the status is not Pending/Nouveau and it's different from what we last saw
+                if (currentStatus.toLowerCase() !== 'pending' && currentStatus.toLowerCase() !== 'nouveau') {
+                    if (seenStatus[ticketId] !== currentStatus) {
+                        newNotifications.push({
+                            id: `status_${ticketId}_${currentStatus}`,
+                            ticketId: reference,
+                            type: 'status',
+                            title: `Status Updated: ${reference}`,
+                            message: `Your ticket status is now "${currentStatus}".`,
+                            date: new Date(item.Modified).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                            rawDate: new Date(item.Modified),
+                            isRead: false
+                        });
+                    }
+                }
+
+                // 2. Check for New Messages
+                try {
+                    const comments = await spService.getComments(ticketId);
+                    if (comments.length > 0) {
+                        const lastComment = comments[comments.length - 1];
+                        // If last comment is NOT from current user and we haven't seen this comment ID yet
+                        if (lastComment.Author?.Title !== props.userDisplayName && seenComments[ticketId] !== lastComment.Id) {
+                            newNotifications.push({
+                                id: `msg_${ticketId}_${lastComment.Id}`,
+                                ticketId: reference,
+                                type: 'message',
+                                title: `New Message: ${reference}`,
+                                message: lastComment.Commentaire || lastComment.Text || 'New message from agent.',
+                                date: new Date(lastComment.Created).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                                rawDate: new Date(lastComment.Created),
+                                isRead: false
+                            });
+                        }
+                    }
+                } catch (e) {
+                    console.warn(`Could not check comments for ticket ${ticketId}`, e);
+                }
+            }
+
+            // Sort by date descending
+            newNotifications.sort((a, b) => b.rawDate.getTime() - a.rawDate.getTime());
+            setNotifications(newNotifications);
+            setHasNotifications(newNotifications.length > 0);
         };
 
         const checkRole = async (): Promise<void> => {
@@ -122,6 +204,16 @@ export const HelpdeskDashboard: React.FC<IDashboardProps> = (props) => {
         <div className={`${styles.helpdeskDashboard} ${isDarkTheme ? styles.dark : ''}`}>
             {/* 1. Smart Search & Instant Resolution */}
             <header className={styles.searchHeader}>
+                <div className={styles.notificationWrapper}>
+                    <div 
+                        className={styles.notificationButton} 
+                        title="Notifications"
+                        onClick={() => setIsNotificationPanelOpen(true)}
+                    >
+                        <Icon iconName="Ringer" />
+                        {hasNotifications && <div className={styles.notificationBadge}></div>}
+                    </div>
+                </div>
                 <h1>Hello, {escape(userDisplayName)}</h1>
                 <p>How can we help you today?</p>
                 <div className={styles.searchInputWrapper}>
@@ -249,6 +341,80 @@ export const HelpdeskDashboard: React.FC<IDashboardProps> = (props) => {
                     </section>
                 </div>
             </div>
+            {/* 6. Notifications Redesigned Popup */}
+            {isNotificationPanelOpen && (
+                <div className={styles.notificationPopupOverlay} onClick={() => setIsNotificationPanelOpen(false)}>
+                    <div className={styles.notificationPopup} onClick={(e) => e.stopPropagation()}>
+                        <div className={styles.popupHeader}>
+                            <h3>Notifications</h3>
+                            <button onClick={() => setIsNotificationPanelOpen(false)} className={styles.popupCloseBtn}>
+                                <Icon iconName="Cancel" />
+                            </button>
+                        </div>
+                        
+                        <div className={styles.popupScrollArea}>
+
+                            {/* Dynamic Ticket Notifications */}
+                            {notifications.length === 0 && (
+                                <div className={styles.emptyNotiLine}>
+                                    No new notifications at this time.
+                                </div>
+                            )}
+
+                            {notifications.map(noti => (
+                                <div key={noti.id} className={styles.notiItem} onClick={async () => {
+                                    // Mark as read in localStorage
+                                    const user = await spService._sp.web.currentUser();
+                                    const seenStatusKey = `helpdesk_seen_status_${user.Id}`;
+                                    const seenCommentsKey = `helpdesk_seen_comments_${user.Id}`;
+                                    
+                                    if (noti.type === 'status') {
+                                        const seenStatus = JSON.parse(localStorage.getItem(seenStatusKey) || '{}');
+                                        // Find the ticket and its actual current status
+                                        const allT = [...activeTickets, ...resolvedTickets];
+                                        const matchingTickets = allT.filter((t: any) => t.id === noti.ticketId);
+                                        if (matchingTickets.length > 0) {
+                                            const t = matchingTickets[0];
+                                            seenStatus[t.spId || parseInt(noti.id.split('_')[1])] = t.status;
+                                            localStorage.setItem(seenStatusKey, JSON.stringify(seenStatus));
+                                        }
+                                    } else if (noti.type === 'message') {
+                                        const seenComments = JSON.parse(localStorage.getItem(seenCommentsKey) || '{}');
+                                        const commentId = parseInt(noti.id.split('_')[2]);
+                                        const ticketId = parseInt(noti.id.split('_')[1]);
+                                        seenComments[ticketId] = commentId;
+                                        localStorage.setItem(seenCommentsKey, JSON.stringify(seenComments));
+                                    }
+
+                                    setSelectedTicketId(noti.ticketId);
+                                    setIsNotificationPanelOpen(false);
+                                    // Refresh notifications list locally
+                                    setNotifications(prev => prev.filter(n => n.id !== noti.id));
+                                    setHasNotifications(notifications.length > 1);
+                                }}>
+                                    <div className={styles.notiAvatar}>
+                                        <div className={`${styles.avatarPlaceholder} ${noti.type === 'status' ? styles.statusIcon : styles.messageIcon}`}>
+                                            <Icon iconName={noti.type === 'status' ? "ReminderTime" : "Message"} />
+                                        </div>
+                                    </div>
+                                    <div className={styles.notiContent}>
+                                        <div className={styles.notiRow}>
+                                            <span className={styles.notiName}>{noti.title}</span>
+                                            <span className={styles.notiTime}>{noti.date}</span>
+                                        </div>
+                                        <p className={styles.notiMsg}>{noti.message}</p>
+                                    </div>
+                                </div>
+                            ))}
+
+                        </div>
+
+                        <div className={styles.popupFooter}>
+                            <span className={styles.viewAllLink}>View All</span>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

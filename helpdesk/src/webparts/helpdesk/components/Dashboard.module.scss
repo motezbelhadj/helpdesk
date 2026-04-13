@@ -17,6 +17,7 @@
   background-color: #f8f9fa;
   min-height: 100vh;
   padding: 32px;
+  position: relative;
 
   &.dark {
     background-color: #1a2633;
@@ -337,4 +338,355 @@ textarea {
     border-color: var(--brand-orange);
     box-shadow: 0 0 0 3px rgba(245, 130, 32, 0.15);
   }
+}
+
+.notificationWrapper {
+  position: absolute;
+  top: 24px;
+  right: 24px;
+  z-index: 10;
+}
+
+.notificationButton {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+
+  i {
+    font-size: 18px;
+    color: white;
+  }
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.25);
+    border-color: rgba(255, 255, 255, 0.4);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  }
+
+  .notificationBadge {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 10px;
+    height: 10px;
+    background-color: #ef4444;
+    border-radius: 50%;
+    border: 2px solid #223445;
+    box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2);
+  }
+}
+
+// Redesigned Popup Styles
+.notificationPopupOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 2000;
+}
+
+.notificationPopup {
+  position: absolute;
+  top: 70px;
+  right: 20px;
+  width: 420px;
+  background: white;
+  border-radius: 20px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  animation: popupFadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 2001;
+}
+
+.dark .notificationPopup {
+  background: #1f2937;
+  color: white;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+}
+
+.popupHeader {
+  padding: 20px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  h3 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 700;
+    color: #111827;
+  }
+}
+
+.dark .popupHeader h3 { color: white; }
+
+.popupCloseBtn {
+  background: #f3f4f6;
+  border: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  i { font-size: 14px; color: #6b7280; }
+  &:hover { background: #e5e7eb; }
+}
+
+.dark .popupCloseBtn {
+  background: #374151;
+  i { color: #9ca3af; }
+  &:hover { background: #4b5563; }
+}
+
+.popupScrollArea {
+  max-height: 500px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+// Uploading Item
+.uploadingItem {
+  margin: 0 24px 16px 24px;
+  padding: 20px;
+  background: white;
+  border: 1px solid #f3f4f6;
+  border-radius: 12px;
+  display: flex;
+  gap: 16px;
+}
+
+.dark .uploadingItem {
+  background: #2d3748;
+  border-color: #374151;
+}
+
+.uploadingIcon {
+  width: 48px;
+  height: 48px;
+  background: #f8fafc;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  i { font-size: 24px; color: #3b82f6; }
+}
+
+.dark .uploadingIcon { background: #1a202c; }
+
+.uploadingDetails {
+  flex: 1;
+}
+
+.uploadingTitle {
+  font-weight: 600;
+  font-size: 15px;
+  margin-bottom: 4px;
+}
+
+.uploadingSubtitle {
+  font-size: 13px;
+  color: #6b7280;
+  margin-bottom: 12px;
+}
+
+.progressBarWrapper {
+  height: 8px;
+  background: #f3f4f6;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.dark .progressBarWrapper { background: #4a5568; }
+
+.progressBar {
+  height: 100%;
+  background: #3b82f6;
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.uploadingFooter {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.percentText {
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b7280;
+}
+
+.uploadActions {
+  display: flex;
+  gap: 16px;
+}
+
+.actionLink {
+  font-size: 13px;
+  font-weight: 600;
+  color: #3b82f6;
+  cursor: pointer;
+  &:hover { text-decoration: underline; }
+}
+
+// Noti Items
+.notiItem {
+  padding: 16px 24px;
+  display: flex;
+  gap: 16px;
+  cursor: pointer;
+  transition: background 0.2s;
+
+  &:hover { background: #f9fafb; }
+}
+
+.dark .notiItem {
+  border-color: #374151;
+  &:hover { background: #2d3748; }
+}
+
+.notiAvatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+  img { width: 100%; height: 100%; object-fit: cover; }
+}
+
+.avatarPlaceholder {
+  width: 100%;
+  height: 100%;
+  background: #3b82f6;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.notiContent {
+  flex: 1;
+}
+
+.notiRow {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.notiName {
+  font-weight: 700;
+  font-size: 14px;
+  color: #111827;
+}
+
+.dark .notiName { color: white; }
+
+.notiTime {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.notiMsg {
+  margin: 0;
+  font-size: 13px;
+  color: #4b5563;
+  line-height: 1.4;
+}
+
+.dark .notiMsg { color: #d1d5db; }
+
+.popupFooter {
+  padding: 16px;
+  text-align: center;
+  border-top: 1px solid #f3f4f6;
+}
+
+.dark .popupFooter { border-color: #374151; }
+
+.viewAllLink {
+  font-size: 14px;
+  font-weight: 700;
+  color: #3b82f6;
+  cursor: pointer;
+  &:hover { text-decoration: underline; }
+}
+
+@keyframes popupFadeIn {
+  from { opacity: 0; transform: translateY(-10px) scale(0.95); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.emptyNoti {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 24px;
+  text-align: center;
+  color: #6b7280;
+
+  i {
+    font-size: 48px;
+    color: #10b981;
+    margin-bottom: 16px;
+    opacity: 0.5;
+  }
+
+  p {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 600;
+  }
+}
+
+.statusIcon {
+  background: #dbeafe !important;
+  i { color: #1e40af !important; }
+}
+
+.messageIcon {
+  background: #fef3c7 !important;
+  i { color: #92400e !important; }
+}
+
+.dark {
+  .statusIcon {
+    background: #1e3a8a !important;
+    i { color: #bfdbfe !important; }
+  }
+  .messageIcon {
+    background: #78350f !important;
+    i { color: #fef3c7 !important; }
+  }
+  .emptyNoti {
+    color: #9ca3af;
+  }
+}
+
+.emptyNotiLine {
+  padding: 32px 24px;
+  text-align: center;
+  color: #6b7280;
+  font-size: 14px;
+  font-style: italic;
 }

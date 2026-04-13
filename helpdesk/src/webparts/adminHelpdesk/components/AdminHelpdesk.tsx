@@ -58,57 +58,52 @@ export default class AdminHelpdesk extends React.Component<IAdminHelpdeskProps, 
       return <div style={{ padding: '20px', textAlign: 'center' }}>Initializing...</div>;
     }
 
-    if (this.state.currentView === 'user-management') {
-      return (
-        <UserManagement
-          isDarkTheme={isDarkTheme}
-          context={context}
-          spService={this._spService}
-          onNavigateBack={() => {
-            if (this.state.userRole === 'Agent') {
-              if (userPageUrl) window.location.href = userPageUrl;
-            } else {
-              this.setState({ currentView: 'admin' });
-            }
-          }}
-        />
-      );
-    }
-
-    if (this.state.currentView === 'ticket-management') {
-      return (
-        <TicketManagement
-          isDarkTheme={isDarkTheme}
-          context={context}
-          spService={this._spService}
-          onNavigateBack={() => {
-            if (this.state.userRole === 'Agent') {
-              if (userPageUrl) window.location.href = userPageUrl;
-            } else {
-              this.setState({ currentView: 'admin' });
-            }
-          }}
-        />
-      );
-    }
-
     return (
       <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', backgroundColor: '#f8f9fa' }}>
-        <AdminDashboard
-          userDisplayName={userDisplayName}
-          isDarkTheme={isDarkTheme}
-          context={context}
-          powerBIReportUrl={powerBIReportUrl}
-          onNavigateBack={() => {
-            if (userPageUrl) {
-              window.location.href = userPageUrl;
-            } else {
-              alert('Please configure the User Portal URL in the web part properties first.');
-            }
-          }}
-          onNavigateToTickets={() => this.setState({ currentView: 'ticket-management' })}
-          onNavigateToUsers={() => this.setState({ currentView: 'user-management' })}
-        />
+
+        {this.state.currentView === 'user-management' ? (
+          <UserManagement
+            isDarkTheme={isDarkTheme}
+            context={context}
+            spService={this._spService}
+            onNavigateBack={() => {
+              if (this.state.userRole === 'Agent') {
+                if (userPageUrl) window.location.href = userPageUrl;
+              } else {
+                this.setState({ currentView: 'admin' });
+              }
+            }}
+          />
+        ) : this.state.currentView === 'ticket-management' ? (
+          <TicketManagement
+            isDarkTheme={isDarkTheme}
+            context={context}
+            spService={this._spService}
+            onNavigateBack={() => {
+              if (this.state.userRole === 'Agent') {
+                if (userPageUrl) window.location.href = userPageUrl;
+              } else {
+                this.setState({ currentView: 'admin' });
+              }
+            }}
+          />
+        ) : (
+          <AdminDashboard
+            userDisplayName={userDisplayName}
+            isDarkTheme={isDarkTheme}
+            context={context}
+            powerBIReportUrl={powerBIReportUrl}
+            onNavigateBack={() => {
+              if (userPageUrl) {
+                window.location.href = userPageUrl;
+              } else {
+                alert('Please configure the User Portal URL in the web part properties first.');
+              }
+            }}
+            onNavigateToTickets={() => this.setState({ currentView: 'ticket-management' })}
+            onNavigateToUsers={() => this.setState({ currentView: 'user-management' })}
+          />
+        )}
       </div>
     );
   }
