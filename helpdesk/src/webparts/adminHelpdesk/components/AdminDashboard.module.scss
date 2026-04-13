@@ -433,3 +433,126 @@
     border-radius: 8px;
   }
 }
+
+.refreshBtn {
+  background: none;
+  border: 1px solid var(--border-color);
+  color: var(--brand-dark-blue);
+  padding: 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  &:hover { background: #f3f4f6; }
+}
+
+.liveIndicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85em;
+  color: #107c10;
+  font-weight: 600;
+  background: #f0fdf4;
+  padding: 4px 10px;
+  border-radius: 20px;
+}
+
+.liveDot {
+  width: 8px;
+  height: 8px;
+  background-color: #107c10;
+  border-radius: 50%;
+  box-shadow: 0 0 0 0 rgba(16, 124, 16, 0.4);
+  animation: pulse 2s infinite;
+}
+
+.powerBIWrapper {
+  position: relative;
+  min-height: 400px;
+  width: 100%;
+}
+
+.pbiSkeleton {
+  padding: 24px;
+  background: #f9fafb;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  position: relative;
+  height: 600px;
+}
+
+.skeletonHeader {
+  height: 40px;
+  width: 40%;
+  background: #e5e7eb;
+  border-radius: 4px;
+  animation: shimmer 2s infinite linear;
+}
+
+.skeletonGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+  flex-grow: 1;
+}
+
+.skeletonCard {
+  height: 120px;
+  background: #e5e7eb;
+  border-radius: 8px;
+  animation: shimmer 2s infinite linear;
+}
+
+.skeletonChart {
+  grid-column: span 2;
+  background: #e5e7eb;
+  border-radius: 8px;
+  animation: shimmer 2s infinite linear;
+}
+
+.pbiLoader {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  i { font-size: 64px; color: #f2c811; margin-bottom: 12px; }
+  p { font-weight: 600; color: var(--brand-dark-blue); }
+}
+
+.authHelper {
+  margin-top: 16px;
+  padding: 12px 16px;
+  background-color: #fffbeb;
+  border: 1px solid #fef3c7;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #92400e;
+  font-size: 0.95em;
+  animation: slideUp 0.3s ease-out;
+  a { color: #b45309; font-weight: bold; text-decoration: underline; }
+}
+
+@keyframes shimmer {
+  0% { opacity: 0.5; }
+  50% { opacity: 0.8; }
+  100% { opacity: 0.5; }
+}
+
+@keyframes pulse {
+  0% { box-shadow: 0 0 0 0 rgba(16, 124, 16, 0.4); }
+  70% { box-shadow: 0 0 0 10px rgba(16, 124, 16, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(16, 124, 16, 0); }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}

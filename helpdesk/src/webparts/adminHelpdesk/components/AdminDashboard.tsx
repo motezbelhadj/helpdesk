@@ -29,6 +29,8 @@ export const AdminDashboard: React.FC<IAdminDashboardProps> = (props) => {
   const { userDisplayName, isDarkTheme, onNavigateBack, context, powerBIReportUrl } = props;
   const [tickets, setTickets] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [iframeLoading, setIframeLoading] = useState<boolean>(true);
+  const [showAuthHelper, setShowAuthHelper] = useState<boolean>(false);
   const spService = new SPService(context);
 
   useEffect(() => {
@@ -45,6 +47,13 @@ export const AdminDashboard: React.FC<IAdminDashboardProps> = (props) => {
     };
 
     fetchAllTickets().catch(err => console.error(err));
+
+    // Show auth troubleshooting after 7 seconds if still loading
+    const timer = setTimeout(() => {
+      setShowAuthHelper(true);
+    }, 7000);
+
+    return () => clearTimeout(timer);
   }, []);
 
   // Calculations
@@ -52,15 +61,6 @@ export const AdminDashboard: React.FC<IAdminDashboardProps> = (props) => {
   const totalResolved = tickets.filter(t => (t.Status || t.Statut) === 'Resolved').length;
   const pendingTickets = tickets.filter(t => (t.Status || t.Statut) === 'New' || (t.Status || t.Statut) === 'Pending').length;
 
-  const highPriority = tickets.filter(t => t.Priority === 'High' || t.Priorite === 'Haute').length;
-  const medPriority = tickets.filter(t => t.Priority === 'Medium' || t.Priorite === 'Moyenne').length;
-  const lowPriority = tickets.filter(t => t.Priority === 'Low' || t.Priorite === 'Basse').length;
-
-  const categories: {[key: string]: number} = {};
-  tickets.forEach(t => {
-    const cat = t.Categorie || t.Category || 'Autre';
-    categories[cat] = (categories[cat] || 0) + 1;
-  });
 
   return (
     <div className={`${styles.adminDashboard} ${isDarkTheme ? styles.dark : ''}`}>
@@ -101,83 +101,69 @@ export const AdminDashboard: React.FC<IAdminDashboardProps> = (props) => {
 
         <div className={styles.dashboardGrid}>
             <div className={styles.mainContent}>
-                <div className={styles.card}>
-                    <h3>Trends by Category</h3>
-                    <div className={styles.chartMetric}>Real-time distribution</div>
-                    <div className={styles.chartPlaceholder}>
-                        <div className={styles.placeholderBars}>
-                            {Object.keys(categories).slice(0, 7).map(cat => {
-                                const percentage = (categories[cat] / tickets.length) * 100 || 0;
-                                return (
-                                    <div key={cat} className={styles.barContainer} title={`${cat}: ${categories[cat]}`}>
-                                        <div className={styles.bar} style={{ height: `${Math.max(percentage, 5)}%` }}></div>
-                                        <span style={{ fontSize: '0.7em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '40px' }}>{cat}</span>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </div>
-                </div>
-
-                <div className={styles.chartsRow}>
-                     <div className={styles.card}>
-                        <h3>Tickets by Category</h3>
-                        <div className={styles.donutChartPlaceholder}>
-                            <div className={styles.donutCenter}>{tickets.length} total</div>
-                        </div>
-                        <div className={styles.chartLegend}>
-                            {Object.keys(categories).slice(0, 3).map((cat, i) => (
-                                <span key={cat} className={styles.legendItem}>
-                                    <span style={{backgroundColor: i === 0 ? '#223445' : i === 1 ? '#F58220' : '#107c10'}}></span> 
-                                    {cat} ({Math.round((categories[cat] / tickets.length) * 100) || 0}%)
-                                </span>
-                            ))}
-                        </div>
-                    </div>
-                    <div className={styles.card}>
-                        <h3>Priority Distribution</h3>
-                         <div className={styles.statsList}>
-                             <div className={styles.statItem}>
-                                 <div className={styles.statLabel}>High</div>
-                                 <div className={styles.statBarWrapper}>
-                                    <div className={styles.statBar} style={{width: `${(highPriority/tickets.length)*100}%`, backgroundColor: '#d13438'}}></div>
-                                 </div>
-                                 <div className={styles.statValue}>{highPriority}</div>
-                             </div>
-                             <div className={styles.statItem}>
-                                 <div className={styles.statLabel}>Medium</div>
-                                 <div className={styles.statBarWrapper}>
-                                    <div className={styles.statBar} style={{width: `${(medPriority/tickets.length)*100}%`, backgroundColor: '#f58220'}}></div>
-                                 </div>
-                                 <div className={styles.statValue}>{medPriority}</div>
-                             </div>
-                             <div className={styles.statItem}>
-                                 <div className={styles.statLabel}>Low</div>
-                                 <div className={styles.statBarWrapper}>
-                                    <div className={styles.statBar} style={{width: `${(lowPriority/tickets.length)*100}%`, backgroundColor: '#107c10'}}></div>
-                                 </div>
-                                 <div className={styles.statValue}>{lowPriority}</div>
-                             </div>
-                         </div>
-                     </div>
-                </div>
 
                 {/* Power BI Embedded Report Section */}
                 {powerBIReportUrl ? (
                     <div className={styles.card}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                            <h3>Live Power BI Report</h3>
-                            <span style={{ fontSize: '0.8em', color: 'var(--text-secondary)' }}>Live Sync Enabled</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <h3>Live Analytics</h3>
+                                <div className={styles.liveIndicator}>
+                                    <span className={styles.liveDot}></span>
+                                    Live Sync
+                                </div>
+                            </div>
+                            <button 
+                                className={styles.refreshBtn} 
+                                onClick={() => {
+                                    const iframe = document.getElementById('pbi-iframe') as HTMLIFrameElement;
+                                    if (iframe) iframe.src = iframe.src;
+                                }}
+                                title="Refresh Report"
+                            >
+                                <Icon iconName="Refresh" />
+                            </button>
                         </div>
-                        <div className={styles.powerBIContainer}>
-                            <iframe
-                                title="Power BI Report"
-                                width="100%"
-                                height="600"
-                                src={powerBIReportUrl}
-                                frameBorder="0"
-                                allowFullScreen={true}
-                            ></iframe>
+                        
+                        <div className={styles.powerBIWrapper}>
+                            {iframeLoading && (
+                                <div className={styles.pbiSkeleton}>
+                                    <div className={styles.skeletonHeader}></div>
+                                    <div className={styles.skeletonGrid}>
+                                        <div className={styles.skeletonCard}></div>
+                                        <div className={styles.skeletonCard}></div>
+                                        <div className={styles.skeletonChart}></div>
+                                    </div>
+                                    <div className={styles.pbiLoader}>
+                                        <Icon iconName="PowerBILogo" />
+                                        <p>Connecting to Power BI Service...</p>
+                                    </div>
+                                </div>
+                            )}
+                            
+                            <div className={styles.powerBIContainer} style={{ opacity: iframeLoading ? 0 : 1, position: iframeLoading ? 'absolute' : 'relative', width: '100%' }}>
+                                <iframe
+                                    id="pbi-iframe"
+                                    title="Power BI Report"
+                                    width="100%"
+                                    height="600"
+                                    src={powerBIReportUrl}
+                                    frameBorder="0"
+                                    allowFullScreen={true}
+                                    allow="fullscreen; geolocation; microphone; camera; display-capture; encrypted-media;"
+                                    onLoad={() => setIframeLoading(false)}
+                                ></iframe>
+                            </div>
+
+                            {showAuthHelper && iframeLoading && (
+                                <div className={styles.authHelper}>
+                                    <Icon iconName="Info" />
+                                    <p>
+                                        Stuck on the Power BI logo? 
+                                        <a href="https://app.powerbi.com" target="_blank" rel="noopener noreferrer"> Click here to sign in</a> and then refresh this page.
+                                    </p>
+                                </div>
+                            )}
                         </div>
                     </div>
                 ) : (
