@@ -51,7 +51,7 @@ export const AgentHuman: React.FC<IAgentHumanProps> = (props) => {
       case 'dashboard':
         return <AgentHumanDashboard tickets={tickets} onNavigateToList={() => setCurrentView('list')} onNavigateToDetails={navigateToDetails} userPageUrl={props.userPageUrl} />;
       case 'list':
-        return <AgentHumanTicketList tickets={tickets} onNavigateToDetails={navigateToDetails} onBack={() => { setCurrentView('dashboard'); setRefreshKey(k => k + 1); }} />;
+        return <AgentHumanTicketList tickets={tickets} onNavigateToDetails={navigateToDetails} onBack={() => { setCurrentView('dashboard'); setRefreshKey(k => k + 1); }} spService={spService} />;
       case 'details':
         return <AgentHumanTicketDetails ticketId={selectedTicketId!} onBack={() => { setCurrentView('list'); setRefreshKey(k => k + 1); }} spService={spService} agentAIPageUrl={props.agentAIPageUrl} />;
       default:

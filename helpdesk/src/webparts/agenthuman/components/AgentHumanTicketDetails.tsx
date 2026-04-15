@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import styles from './AgentHuman.module.scss';
 import { SPService } from '../../../services/SPService';
 import { Icon } from '@fluentui/react';
+import { SLACountdown } from '../../helpdesk/components/SLACountdown';
 
 /**
  * Properties for the AgentHumanTicketDetails component.
@@ -120,7 +121,7 @@ export const AgentHumanTicketDetails: React.FC<ITicketDetailsProps> = ({ ticketI
           </button>
           <h2 style={{ fontSize: '1.4rem' }}>{ticket.Reference || `TK-${ticket.Id}`}</h2>
         </div>
-        <div style={{ display: 'flex', gap: '8px' }}>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
           <button disabled={isUpdating} onClick={() => handleStatusChange('In Progress')} className={styles.btnPrimary} style={{ background: '#dbeafe', color: '#1e40af' }}>
             <Icon iconName="Processing" style={{ marginRight: '8px' }} />
             Mark In Progress
@@ -129,6 +130,12 @@ export const AgentHumanTicketDetails: React.FC<ITicketDetailsProps> = ({ ticketI
             <Icon iconName="Wait" style={{ marginRight: '8px' }} />
             Awaiting Feedback
           </button>
+          {ticket.Status !== 'Resolved' && (
+            <SLACountdown 
+              targetDate={ticket.DueDate ? new Date(ticket.DueDate) : spService.calculateDeadline(new Date(ticket.Created), ticket.Priorite || ticket.Priority || 'Normal')} 
+              isResolved={false} 
+            />
+          )}
         </div>
       </header>
 
@@ -136,7 +143,7 @@ export const AgentHumanTicketDetails: React.FC<ITicketDetailsProps> = ({ ticketI
         <div className={styles.mainContent}>
           <div className={styles.section} style={{ marginBottom: '24px' }}>
             <h3 style={{ border: 'none', marginBottom: '8px' }}>{ticket.Title}</h3>
-            <p style={{ color: '#64748b', fontSize: '0.9rem', marginBottom: '24px' }}>Submitted on {new Date().toLocaleDateString()}</p>
+            <p style={{ color: '#64748b', fontSize: '0.9rem', marginBottom: '24px' }}>Submitted on {new Date(ticket.Created).toLocaleDateString()}</p>
             
             <div style={{ background: '#f8fafc', padding: '24px', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
               <div style={{ fontWeight: 700, marginBottom: '8px', color: 'var(--brand-dark-blue)' }}>Description</div>
@@ -213,6 +220,12 @@ export const AgentHumanTicketDetails: React.FC<ITicketDetailsProps> = ({ ticketI
                   styles.pending}`}>
                   {ticket.Status || 'Pending'}
                 </span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px', paddingTop: '16px', borderTop: '1px solid #e2e8f0' }}>
+                <span style={{ color: '#64748b', fontSize: '0.85rem' }}>SLA Deadline</span>
+                <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>
+                  {new Date(ticket.DueDate ? ticket.DueDate : spService.calculateDeadline(new Date(ticket.Created), ticket.Priorite || ticket.Priority || 'Normal')).toLocaleString()}
+                </div>
               </div>
             </div>
           </div>

@@ -2,6 +2,8 @@ import * as React from 'react';
 import { useState } from 'react';
 import styles from './AgentHuman.module.scss';
 import { Icon } from '@fluentui/react';
+import { SLACountdown } from '../../helpdesk/components/SLACountdown';
+import { SPService } from '../../../services/SPService';
 
 /**
  * Properties for the AgentHumanTicketList component.
@@ -10,6 +12,7 @@ export interface ITicketListProps {
   tickets: any[];                          // Full list of tickets assigned to the agent
   onNavigateToDetails: (id: number) => void; // Callback to navigate to a specific ticket's details
   onBack: () => void;                      // Callback to return to the agent dashboard
+  spService: SPService;                    // Service for SharePoint operations
 }
 
 /**
@@ -17,7 +20,7 @@ export interface ITicketListProps {
  * 
  * Renders a searchable and filterable table of tickets assigned to the current agent.
  */
-export const AgentHumanTicketList: React.FC<ITicketListProps> = ({ tickets, onNavigateToDetails, onBack }) => {
+export const AgentHumanTicketList: React.FC<ITicketListProps> = ({ tickets, onNavigateToDetails, onBack, spService }) => {
   const [filter, setFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
 
@@ -79,6 +82,7 @@ export const AgentHumanTicketList: React.FC<ITicketListProps> = ({ tickets, onNa
             <th>AssignedTo</th>
             <th>Status</th>
             <th>Date</th>
+            <th>SLA Deadline</th>
           </tr>
         </thead>
         <tbody>
@@ -116,6 +120,14 @@ export const AgentHumanTicketList: React.FC<ITicketListProps> = ({ tickets, onNa
               </td>
               <td style={{ fontSize: '0.8rem', color: '#64748b' }}>
                 {t.Created ? new Date(t.Created).toLocaleDateString() : 'N/A'}
+              </td>
+              <td>
+                {t.Status !== 'Resolved' && (
+                  <SLACountdown 
+                    targetDate={t.DueDate ? new Date(t.DueDate) : spService.calculateDeadline(new Date(t.Created), t.Priority || t.Priorite || 'Normal')} 
+                    isResolved={false} 
+                  />
+                )}
               </td>
             </tr>
           ))}

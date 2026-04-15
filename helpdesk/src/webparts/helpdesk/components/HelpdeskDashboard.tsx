@@ -8,6 +8,7 @@ import { WebPartContext } from '@microsoft/sp-webpart-base';
 import { Icon } from '@fluentui/react';
 import { SPService } from '../../../services/SPService';
 import { UserTicketDetails } from './UserTicketDetails';
+import { SLACountdown } from './SLACountdown';
 
 /**
  * Properties for the HelpdeskDashboard component.
@@ -79,10 +80,13 @@ export const HelpdeskDashboard: React.FC<IDashboardProps> = (props) => {
 
                             return {
                                 id: reference,
+                                spId: item.Id,
                                 title: item.Title || item.Titre || 'Untitled',
                                 status: status as 'Pending' | 'In Progress' | 'Resolved', // Use known statuses
                                 date: item.Created ? new Date(item.Created).toLocaleDateString() : 'N/A',
-                                category: category
+                                category: category,
+                                priority: item.Priorite || item.Priority || 'Normal',
+                                dueDate: item.DueDate ? new Date(item.DueDate) : spService.calculateDeadline(new Date(item.Created), item.Priorite || 'Normal')
                             };
                         });
 
@@ -159,6 +163,27 @@ export const HelpdeskDashboard: React.FC<IDashboardProps> = (props) => {
                     }
                 } catch (e) {
                     console.warn(`Could not check comments for ticket ${ticketId}`, e);
+                }
+
+                // 3. Check for Overdue
+                const priority = item.Priorite || 'Normal';
+                const deadline = item.DueDate ? new Date(item.DueDate) : spService.calculateDeadline(new Date(item.Created), priority);
+                const isOverdue = deadline.getTime() < new Date().getTime() && currentStatus.toLowerCase() !== 'resolved';
+                
+                const seenOverdueKey = `helpdesk_seen_overdue_${currentUserId}`;
+                const seenOverdue = JSON.parse(localStorage.getItem(seenOverdueKey) || '{}');
+
+                if (isOverdue && !seenOverdue[ticketId]) {
+                    newNotifications.push({
+                        id: `overdue_${ticketId}`,
+                        ticketId: reference,
+                        type: 'status',
+                        title: `TICKET OVERDUE: ${reference}`,
+                        message: `The SLA deadline for this ticket has passed.`,
+                        date: deadline.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                        rawDate: deadline,
+                        isRead: false
+                    });
                 }
             }
 
@@ -298,12 +323,17 @@ export const HelpdeskDashboard: React.FC<IDashboardProps> = (props) => {
                             const statusKey = ticket.status.replace(/\s+/g, '').charAt(0).toLowerCase() + ticket.status.replace(/\s+/g, '').slice(1);
                             const statusStyle = styles[statusKey as keyof typeof styles] || '';
                             return (
-                                <div key={ticket.id} className={`${styles.statusCard} ${statusStyle}`} onClick={() => setSelectedTicketId(ticket.id)} style={{ cursor: 'pointer' }}>
-                                    <div>
+                                <div key={ticket.id} className={`${styles.statusCard} ${statusStyle}`} onClick={() => setSelectedTicketId(ticket.id)} style={{ cursor: 'pointer', position: 'relative' }}>
+                                    <div style={{ flex: 1, marginRight: '10px' }}>
                                         <strong>{ticket.id}</strong>: {ticket.title}
                                         <div style={{ fontSize: '0.8em', color: '#605e5c' }}>{ticket.category} • Created {ticket.date}</div>
                                     </div>
-                                    <span className={styles.badge}>{ticket.status}</span>
+                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
+                                        <span className={styles.badge}>{ticket.status}</span>
+                                        {ticket.status.toLowerCase() !== 'resolved' && ticket.dueDate && (
+                                            <SLACountdown targetDate={ticket.dueDate} isResolved={false} />
+                                        )}
+                                    </div>
                                 </div>
                             );
                         })}
@@ -384,6 +414,12 @@ export const HelpdeskDashboard: React.FC<IDashboardProps> = (props) => {
                                         const ticketId = parseInt(noti.id.split('_')[1]);
                                         seenComments[ticketId] = commentId;
                                         localStorage.setItem(seenCommentsKey, JSON.stringify(seenComments));
+                                    } else if (noti.id.indexOf('overdue_') === 0) {
+                                        const ticketId = parseInt(noti.id.split('_')[1]);
+                                        const seenOverdueKey = `helpdesk_seen_overdue_${user.Id}`;
+                                        const seenOverdue = JSON.parse(localStorage.getItem(seenOverdueKey) || '{}');
+                                        seenOverdue[ticketId] = true;
+                                        localStorage.setItem(seenOverdueKey, JSON.stringify(seenOverdue));
                                     }
 
                                     setSelectedTicketId(noti.ticketId);

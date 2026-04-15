@@ -77,7 +77,7 @@ export const TicketManagement: React.FC<ITicketManagementProps> = (props) => {
             const status = item.Statut || item.Status || item.status || 'Pending';
             const category = item.Categorie || item.Category || item.category || 'General';
             const reference = item.Reference || item.reference || `TK-${item.Id}`;
-            const priority = item.Priority || item.Priorite || 'Medium';
+            const priority = item.Priority || item.Priorite || 'Normal';
 
             return {
               id: reference,
@@ -340,11 +340,11 @@ export const TicketManagement: React.FC<ITicketManagementProps> = (props) => {
                     </td>
                     <td>
                       <span className={`${styles.priorityChip} ${
-                        ticket.priority === 'High' || ticket.priority === 'Critical' ? styles.high :
-                        ticket.priority === 'Medium' ? styles.medium :
+                        ticket.priority === 'High' || ticket.priority === 'Urgent' ? styles.high :
+                        ticket.priority === 'Normal' ? styles.medium :
                         styles.low
                       }`}>
-                        {ticket.priority || 'Medium'}
+                        {ticket.priority || 'Normal'}
                       </span>
                     </td>
                     <td>{ticket.category}</td>

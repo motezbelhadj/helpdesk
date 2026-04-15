@@ -14,6 +14,12 @@ import "@pnp/sp/attachments";
  */
 export class SPService {
     public _sp: SPFI;
+    private readonly SLA_CONFIG: { [key: string]: number } = {
+        'Urgent': 2,
+        'High': 8,
+        'Normal': 24,
+        'Low': 48
+    };
 
     constructor(context: WebPartContext) {
         this._sp = spfi().using(SPFx(context));
@@ -31,9 +37,15 @@ export class SPService {
             // Get current user to populate Creepar (Person column)
             const user = await this._sp.web.currentUser();
             
+            const priority = ticketDetails.Priorite || 'Normal';
+            const hoursToAdd = this.SLA_CONFIG[priority] || 24;
+            const dueDate = new Date();
+            dueDate.setHours(dueDate.getHours() + hoursToAdd);
+
             const payload = {
                 ...ticketDetails,
-                CreeparId: user.Id
+                CreeparId: user.Id,
+                DueDate: dueDate.toISOString()
             };
 
             const result = await this._sp.web.lists.getByTitle("ticket").items.add(payload);
@@ -56,7 +68,7 @@ export class SPService {
     public async getUserTickets(userId: number): Promise<any[]> {
         try {
             return await this._sp.web.lists.getByTitle("ticket").items
-                .select("Id", "Title", "Status", "Created", "Modified", "Author/Id", "Author/Title", "Editor/Title", "Reference", "Categorie", "Priorite", "Description")
+                .select("Id", "Title", "Status", "Created", "Modified", "Author/Id", "Author/Title", "Editor/Title", "Reference", "Categorie", "Priorite", "Description", "DueDate")
                 .expand("Author", "Editor")
                 .filter(`Author/Id eq ${userId}`)
                 .orderBy("Modified", false)();
@@ -74,7 +86,7 @@ export class SPService {
     public async getAllTickets(): Promise<any[]> {
         try {
             return await this._sp.web.lists.getByTitle("ticket").items
-                .select("Id", "Title", "Status", "Created", "Author/Id", "Author/Title", "Reference", "Categorie", "Priorite", "Description", "AssignedTo/Id", "AssignedTo/Title")
+                .select("Id", "Title", "Status", "Created", "Author/Id", "Author/Title", "Reference", "Categorie", "Priorite", "Description", "AssignedTo/Id", "AssignedTo/Title", "DueDate")
                 .expand("Author", "AssignedTo")
                 .orderBy("Created", false)();
         } catch (error) {
@@ -92,7 +104,7 @@ export class SPService {
     public async getAgentTickets(userId: number): Promise<any[]> {
         try {
             return await this._sp.web.lists.getByTitle("ticket").items
-                .select("Id", "Title", "Status", "Created", "Author/Id", "Author/Title", "Reference", "Categorie", "Priorite", "Description", "AssignedTo/Id", "AssignedTo/Title")
+                .select("Id", "Title", "Status", "Created", "Author/Id", "Author/Title", "Reference", "Categorie", "Priorite", "Description", "AssignedTo/Id", "AssignedTo/Title", "DueDate")
                 .expand("Author", "AssignedTo")
                 .filter(`AssignedToId eq ${userId}`)
                 .orderBy("Created", false)();
@@ -296,5 +308,19 @@ export class SPService {
             console.error("Error deleting ticket", error);
             throw error;
         }
+    }
+
+    /**
+     * Calculates the deadline for a ticket based on its creation date and priority.
+     * 
+     * @param createdDate The creation date of the ticket
+     * @param priority The priority of the ticket
+     * @returns The calculated deadline Date object
+     */
+    public calculateDeadline(createdDate: Date, priority: string): Date {
+        const hoursToAdd = this.SLA_CONFIG[priority] || 24;
+        const deadline = new Date(createdDate.getTime());
+        deadline.setHours(deadline.getHours() + hoursToAdd);
+        return deadline;
     }
 }

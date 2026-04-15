@@ -8,9 +8,10 @@ export interface ITicket {
   status: 'Pending' | 'In Progress' | 'Awaiting Feedback' | 'Resolved' | 'Resolu' | 'En cours' | 'En attente';
   date: string;
   category: string;
-  priority?: 'Low' | 'Medium' | 'High' | 'Critical';
+  priority?: 'Low' | 'Normal' | 'High' | 'Urgent';
   assignedTo?: string;
   description?: string;
+  dueDate?: Date;
   estimatedResolution?: string;
 }
 

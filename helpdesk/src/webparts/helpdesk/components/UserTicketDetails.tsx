@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import styles from './Dashboard.module.scss';
 import { SPService } from '../../../services/SPService';
 import { Icon } from '@fluentui/react';
+import { SLACountdown } from './SLACountdown';
 
 /**
  * Properties for the UserTicketDetails component.
@@ -159,6 +160,12 @@ export const UserTicketDetails: React.FC<IUserTicketDetailsProps> = ({ ticketId,
                             <span className={`${styles.status} ${statusClass}`}>
                                 {ticket.Status || 'Pending'}
                             </span>
+                            {ticket.Status !== 'Resolved' && (
+                                <SLACountdown 
+                                    targetDate={ticket.DueDate ? new Date(ticket.DueDate) : spService.calculateDeadline(new Date(ticket.Created), ticket.Priorite || 'Normal')} 
+                                    isResolved={false} 
+                                />
+                            )}
                         </div>
                 </div>
             </header>
@@ -264,6 +271,12 @@ export const UserTicketDetails: React.FC<IUserTicketDetailsProps> = ({ ticketId,
                             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                                 <span style={{ color: '#64748b' }}>Reference</span>
                                 <span style={{ fontWeight: 600 }}>{ticket.Reference || `TK-${ticket.Id}`}</span>
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px', paddingTop: '16px', borderTop: '1px solid #e2e8f0' }}>
+                                <span style={{ color: '#64748b', fontSize: '0.85rem' }}>Resolution Deadline</span>
+                                <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>
+                                    {new Date(ticket.DueDate ? ticket.DueDate : spService.calculateDeadline(new Date(ticket.Created), ticket.Priorite || 'Normal')).toLocaleString()}
+                                </div>
                             </div>
                         </div>
                     </div>
