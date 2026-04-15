@@ -50,6 +50,8 @@ export const TicketManagement: React.FC<ITicketManagementProps> = (props) => {
   // Filters
   const [statusFilter, setStatusFilter] = useState<string>('All');
   const [categoryFilter, setCategoryFilter] = useState<string>('All');
+  const [agentFilter, setAgentFilter] = useState<string>('All');
+  const [dateSort, setDateSort] = useState<string>('Newest');
   const [searchQuery, setSearchQuery] = useState<string>('');
 
   useEffect(() => {
@@ -58,7 +60,7 @@ export const TicketManagement: React.FC<ITicketManagementProps> = (props) => {
 
   useEffect(() => {
     applyFilters();
-  }, [tickets, statusFilter, categoryFilter, searchQuery]);
+  }, [tickets, statusFilter, categoryFilter, agentFilter, dateSort, searchQuery]);
 
   /**
    * Fetches the list of all tickets from the SharePoint list.
@@ -146,12 +148,23 @@ export const TicketManagement: React.FC<ITicketManagementProps> = (props) => {
       result = result.filter(t => t.category === categoryFilter);
     }
 
+    if (agentFilter !== 'All') {
+      result = result.filter(t => (t.assignedTo || 'Unassigned') === agentFilter);
+    }
+
     if (searchQuery) {
       result = result.filter(t => 
-        t.title.toLowerCase().indexOf(searchQuery.toLowerCase()) !== -1 ||
-        t.id.toLowerCase().indexOf(searchQuery.toLowerCase()) !== -1
+        (t.title || '').toLowerCase().indexOf(searchQuery.toLowerCase()) !== -1 ||
+        (t.id || '').toLowerCase().indexOf(searchQuery.toLowerCase()) !== -1
       );
     }
+
+    // Apply exact sorting based on SP IDs (chronological sequence)
+    result.sort((a, b) => {
+      if (dateSort === 'Newest') return (b.spId || 0) - (a.spId || 0);
+      if (dateSort === 'Oldest') return (a.spId || 0) - (b.spId || 0);
+      return 0;
+    });
 
     setFilteredTickets(result);
   };
@@ -334,6 +347,21 @@ export const TicketManagement: React.FC<ITicketManagementProps> = (props) => {
               <option value="Hardware">Hardware</option>
               <option value="Software">Software</option>
               <option value="Facilities">Facilities</option>
+            </select>
+          </div>
+          <div className={styles.filterGroup}>
+            <label>Agent</label>
+            <select value={agentFilter} onChange={(e) => setAgentFilter(e.target.value)}>
+              <option value="All">All Agents</option>
+              {agents.map(a => <option key={a.id} value={a.name}>{a.name}</option>)}
+              <option value="Unassigned">Unassigned</option>
+            </select>
+          </div>
+          <div className={styles.filterGroup}>
+            <label>Date Sort</label>
+            <select value={dateSort} onChange={(e) => setDateSort(e.target.value)}>
+              <option value="Newest">Newest First</option>
+              <option value="Oldest">Oldest First</option>
             </select>
           </div>
         </div>
