@@ -157,6 +157,36 @@ export const TicketManagement: React.FC<ITicketManagementProps> = (props) => {
   };
 
   /**
+   * Generates a CSV file from the currently filtered tickets and triggers a download.
+   */
+  const exportToExcel = (): void => {
+    const headers = ["Ticket ID", "Title", "Status", "Priority", "Category", "Assigned To", "Created Date"];
+    
+    // Map tickets to rows, escaping quotes to preserve text structure
+    const rows = filteredTickets.map(ticket => [
+      ticket.id || '',
+      `"${(ticket.title || '').replace(/"/g, '""')}"`,
+      ticket.status || '',
+      ticket.priority || '',
+      ticket.category || '',
+      `"${(ticket.assignedTo || 'Unassigned').replace(/"/g, '""')}"`,
+      ticket.date
+    ]);
+    
+    const csvContent = [headers.join(","), ...rows.map(r => r.join(","))].join("\n");
+    
+    // Create Blob with UTF-8 BOM so Excel opens characters (e.g. accents) correctly
+    const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' }); 
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", `Tickets_Export_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  /**
    * Updates a specific ticket both locally and in SharePoint.
    * Prompts the user for confirmation before making the update.
    * 
@@ -306,6 +336,17 @@ export const TicketManagement: React.FC<ITicketManagementProps> = (props) => {
               <option value="Facilities">Facilities</option>
             </select>
           </div>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '16px', borderTop: '1px solid #e2e8f0', paddingTop: '16px' }}>
+            <button 
+                onClick={exportToExcel}
+                style={{ background: '#107c41', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px', transition: 'background 0.2s', boxShadow: '0 2px 4px rgba(16,124,65,0.2)' }}
+                onMouseOver={(e) => e.currentTarget.style.background = '#0b5c30'}
+                onMouseOut={(e) => e.currentTarget.style.background = '#107c41'}
+            >
+                <i className="ms-Icon ms-Icon--ExcelDocument" aria-hidden="true" style={{ fontSize: '16px' }} />
+                Export to Excel (.csv)
+            </button>
         </div>
       </div>
 
