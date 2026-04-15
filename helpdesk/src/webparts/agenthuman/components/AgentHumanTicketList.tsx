@@ -70,8 +70,9 @@ export const AgentHumanTicketList: React.FC<ITicketListProps> = ({ tickets, onNa
         </div>
       </div>
 
-      <table className={styles.ticketTable}>
-        <thead>
+      <div style={{ overflowX: 'auto', width: '100%', paddingBottom: '16px' }}>
+        <table className={styles.ticketTable} style={{ minWidth: '1000px' }}>
+          <thead>
           <tr>
             <th>Titre</th>
             <th>Reference</th>
@@ -133,6 +134,7 @@ export const AgentHumanTicketList: React.FC<ITicketListProps> = ({ tickets, onNa
           ))}
         </tbody>
       </table>
+      </div>
       
       {filteredTickets.length === 0 && (
         <div style={{ textAlign: 'center', padding: '60px', color: '#64748b' }}>

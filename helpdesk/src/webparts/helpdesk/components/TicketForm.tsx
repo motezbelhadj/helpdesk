@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Stack, TextField, Dropdown, PrimaryButton, IDropdownOption, MessageBar, MessageBarType } from '@fluentui/react';
+import { Stack, TextField, Dropdown, PrimaryButton, DefaultButton, IDropdownOption, MessageBar, MessageBarType, Dialog, DialogType, DialogFooter } from '@fluentui/react';
 import { SPService } from '../../../services/SPService';
 import styles from './TicketForm.module.scss';
 
@@ -27,7 +27,7 @@ export const TicketForm: React.FunctionComponent<ITicketFormProps> = (props) => 
     const [submitting, setSubmitting] = React.useState<boolean>(false);
     const [success, setSuccess] = React.useState<string | null>(null);
     const [error, setError] = React.useState<string | null>(null);
-
+    const [showConfirm, setShowConfirm] = React.useState<boolean>(false);
     const categoryOptions: IDropdownOption[] = [
         { key: 'Hardware', text: 'Hardware' },
         { key: 'Software', text: 'Software' },
@@ -150,12 +150,27 @@ export const TicketForm: React.FunctionComponent<ITicketFormProps> = (props) => 
                     <div className={styles.actions}>
                         <PrimaryButton
                             text={submitting ? "Submitting..." : "Submit Ticket"}
-                            onClick={handleSubmit}
+                            onClick={() => setShowConfirm(true)}
                             disabled={submitting || !title || !category || !description}
                             className={styles.submitButton}
                         />
                     </div>
                 </Stack>
+
+                <Dialog
+                    hidden={!showConfirm}
+                    onDismiss={() => setShowConfirm(false)}
+                    dialogContentProps={{
+                        type: DialogType.normal,
+                        title: 'Confirm Ticket Creation',
+                        subText: 'Are you sure you want to submit this new ticket? Helpdesk agents will be notified immediately.'
+                    }}
+                >
+                    <DialogFooter>
+                        <PrimaryButton onClick={() => { setShowConfirm(false); handleSubmit(); }} text="Yes, Submit" disabled={submitting} />
+                        <DefaultButton onClick={() => setShowConfirm(false)} text="Cancel" disabled={submitting} />
+                    </DialogFooter>
+                </Dialog>
             </div>
         </div>
     );

@@ -185,6 +185,26 @@ export const HelpdeskDashboard: React.FC<IDashboardProps> = (props) => {
                         isRead: false
                     });
                 }
+                
+                // 4. Check for Approaching Deadline (less than 4 hours remaining)
+                const timeRemainingMs = deadline.getTime() - new Date().getTime();
+                const isApproaching = timeRemainingMs > 0 && timeRemainingMs < (4 * 60 * 60 * 1000) && currentStatus.toLowerCase() !== 'resolved';
+
+                const seenApproachingKey = `helpdesk_seen_approaching_${currentUserId}`;
+                const seenApproaching = JSON.parse(localStorage.getItem(seenApproachingKey) || '{}');
+
+                if (isApproaching && !seenApproaching[ticketId]) {
+                    newNotifications.push({
+                        id: `approaching_${ticketId}`,
+                        ticketId: reference,
+                        type: 'status',
+                        title: `DEADLINE APPROACHING: ${reference}`,
+                        message: `This ticket is due in less than 4 hours!`,
+                        date: deadline.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                        rawDate: deadline,
+                        isRead: false
+                    });
+                }
             }
 
             // Sort by date descending
@@ -420,6 +440,12 @@ export const HelpdeskDashboard: React.FC<IDashboardProps> = (props) => {
                                         const seenOverdue = JSON.parse(localStorage.getItem(seenOverdueKey) || '{}');
                                         seenOverdue[ticketId] = true;
                                         localStorage.setItem(seenOverdueKey, JSON.stringify(seenOverdue));
+                                    } else if (noti.id.indexOf('approaching_') === 0) {
+                                        const ticketId = parseInt(noti.id.split('_')[1]);
+                                        const seenApproachingKey = `helpdesk_seen_approaching_${user.Id}`;
+                                        const seenApproaching = JSON.parse(localStorage.getItem(seenApproachingKey) || '{}');
+                                        seenApproaching[ticketId] = true;
+                                        localStorage.setItem(seenApproachingKey, JSON.stringify(seenApproaching));
                                     }
 
                                     setSelectedTicketId(noti.ticketId);
