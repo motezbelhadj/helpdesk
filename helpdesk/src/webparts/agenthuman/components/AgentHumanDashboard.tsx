@@ -9,6 +9,7 @@ export interface IDashboardProps {
   tickets: any[];                          // List of tickets assigned to the agent
   onNavigateToList: () => void;            // Callback to navigate to the full ticket list
   onNavigateToDetails: (id: number) => void; // Callback to navigate to a specific ticket's details
+  onNavigateToLeaderboard: () => void;     // Callback to navigate to the gamification leaderboard
   userPageUrl?: string;                    // Optional URL to the user portal
 }
 
@@ -18,7 +19,7 @@ export interface IDashboardProps {
  * Displays the agent's command center overview, including key performance 
  * indicators (KPIs) and a list of urgent tickets requiring immediate action.
  */
-export const AgentHumanDashboard: React.FC<IDashboardProps> = ({ tickets, onNavigateToList, onNavigateToDetails, userPageUrl }) => {
+export const AgentHumanDashboard: React.FC<IDashboardProps> = ({ tickets, onNavigateToList, onNavigateToDetails, onNavigateToLeaderboard, userPageUrl }) => {
   const stats = {
     pending: tickets.filter(t => t.Status === 'Pending' || t.Statut === 'Nouveau' || t.status === 'Pending').length,
     inProgress: tickets.filter(t => t.Status === 'In Progress' || t.Statut === 'En cours' || t.Status === 'Awaiting Feedback').length,
@@ -38,6 +39,10 @@ export const AgentHumanDashboard: React.FC<IDashboardProps> = ({ tickets, onNavi
           <p style={{ margin: '8px 0 0 0', opacity: 0.8, fontSize: '0.9rem' }}>Welcome back. Here is your service overview.</p>
         </div>
         <div style={{ display: 'flex', gap: '12px' }}>
+          <button className={styles.btnPrimary} style={{ background: '#fef3c7', color: '#92400e', boxShadow: 'none' }} onClick={onNavigateToLeaderboard}>
+            <Icon iconName="Trophy2Solid" style={{ marginRight: '8px' }} />
+            Leaderboard
+          </button>
           <button className={styles.btnPrimary} style={{ background: 'var(--brand-text-white)', color: 'var(--brand-orange)' }} onClick={onNavigateToList}>
             <Icon iconName="List" style={{ marginRight: '8px' }} />
             My Ticket Queue

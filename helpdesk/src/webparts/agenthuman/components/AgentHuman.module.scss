@@ -338,3 +338,75 @@ textarea {
     font-size: 1.1rem;
   }
 }
+
+// Leaderboard Styles
+.leaderboardGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.leaderboardCard {
+  display: flex;
+  align-items: center;
+  background: white;
+  border-radius: 16px;
+  padding: 20px 24px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+  border: 2px solid transparent;
+  transition: all 0.3s;
+
+  &:hover {
+    transform: translateX(8px);
+    box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+  }
+}
+
+.rankGold { border-color: #ffd700; background: #fffdf0; .rankCircle { background: #ffd700; color: #856404; } }
+.rankSilver { border-color: #c0c0c0; background: #f8f9fa; .rankCircle { background: #c0c0c0; color: #343a40; } }
+.rankBronze { border-color: #cd7f32; background: #fff5eb; .rankCircle { background: #cd7f32; color: #6e3f13; } }
+.rankStandard { border-color: #e2e8f0; .rankCircle { background: #e2e8f0; color: #475569; } }
+
+.rankCircle {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 1.2rem;
+  margin-right: 20px;
+  flex-shrink: 0;
+}
+
+.agentInfo {
+  flex: 1;
+  h3 { margin: 0 0 4px 0; color: var(--brand-dark-blue); font-size: 1.2rem; border: none; padding: 0; }
+  .metrics {
+    font-size: 0.9rem;
+    color: #64748b;
+    strong { color: var(--brand-dark-blue); font-size: 1rem; }
+  }
+}
+
+.badgesContainer {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.badgeItem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  i { font-size: 14px; }
+}

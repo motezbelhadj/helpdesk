@@ -86,7 +86,7 @@ export class SPService {
     public async getAllTickets(): Promise<any[]> {
         try {
             return await this._sp.web.lists.getByTitle("ticket").items
-                .select("Id", "Title", "Status", "Created", "Author/Id", "Author/Title", "Reference", "Categorie", "Priorite", "Description", "AssignedTo/Id", "AssignedTo/Title", "DueDate")
+                .select("Id", "Title", "Status", "Created", "Modified", "Author/Id", "Author/Title", "Reference", "Categorie", "Priorite", "Description", "AssignedTo/Id", "AssignedTo/Title", "DueDate")
                 .expand("Author", "AssignedTo")
                 .orderBy("Created", false)();
         } catch (error) {

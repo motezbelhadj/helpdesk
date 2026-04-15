@@ -5,6 +5,7 @@ import { IAgentHumanProps } from './IAgentHumanProps';
 import { AgentHumanDashboard } from './AgentHumanDashboard';
 import { AgentHumanTicketList } from './AgentHumanTicketList';
 import { AgentHumanTicketDetails } from './AgentHumanTicketDetails';
+import { AgentHumanLeaderboard } from './AgentHumanLeaderboard';
 import { SPService } from '../../../services/SPService';
 
 /**
@@ -16,7 +17,7 @@ import { SPService } from '../../../services/SPService';
  * @param props The properties for this component (IAgentHumanProps)
  */
 export const AgentHuman: React.FC<IAgentHumanProps> = (props) => {
-  const [currentView, setCurrentView] = useState<'dashboard' | 'list' | 'details'>('dashboard');
+  const [currentView, setCurrentView] = useState<'dashboard' | 'list' | 'details' | 'leaderboard'>('dashboard');
   const [selectedTicketId, setSelectedTicketId] = useState<number | null>(null);
   const [tickets, setTickets] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -49,13 +50,15 @@ export const AgentHuman: React.FC<IAgentHumanProps> = (props) => {
 
     switch (currentView) {
       case 'dashboard':
-        return <AgentHumanDashboard tickets={tickets} onNavigateToList={() => setCurrentView('list')} onNavigateToDetails={navigateToDetails} userPageUrl={props.userPageUrl} />;
+        return <AgentHumanDashboard tickets={tickets} onNavigateToList={() => setCurrentView('list')} onNavigateToDetails={navigateToDetails} userPageUrl={props.userPageUrl} onNavigateToLeaderboard={() => setCurrentView('leaderboard')} />;
       case 'list':
         return <AgentHumanTicketList tickets={tickets} onNavigateToDetails={navigateToDetails} onBack={() => { setCurrentView('dashboard'); setRefreshKey(k => k + 1); }} spService={spService} />;
       case 'details':
         return <AgentHumanTicketDetails ticketId={selectedTicketId!} onBack={() => { setCurrentView('list'); setRefreshKey(k => k + 1); }} spService={spService} agentAIPageUrl={props.agentAIPageUrl} />;
+      case 'leaderboard':
+        return <AgentHumanLeaderboard spService={spService} onBack={() => setCurrentView('dashboard')} />;
       default:
-        return <AgentHumanDashboard tickets={tickets} onNavigateToList={() => setCurrentView('list')} onNavigateToDetails={navigateToDetails} />;
+        return <AgentHumanDashboard tickets={tickets} onNavigateToList={() => setCurrentView('list')} onNavigateToDetails={navigateToDetails} onNavigateToLeaderboard={() => setCurrentView('leaderboard')} />;
     }
   };
 
