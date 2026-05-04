@@ -2,13 +2,7 @@ import * as React from 'react';
 import styles from './AgentAIDashboard.module.scss';
 import { IAgentAIDashboardProps } from './IAgentAIDashboardProps';
 import { Icon, MessageBar, MessageBarType } from '@fluentui/react';
-
-interface IMessage {
-  id: string;
-  text: string;
-  sender: 'user' | 'ai';
-  timestamp: Date;
-}
+import { OllamaService, IMessage } from '../../../backend/ai/OllamaService';
 
 interface ISuggestion {
   id: string;
@@ -52,88 +46,49 @@ const AgentAIDashboard: React.FC<IAgentAIDashboardProps> = (props) => {
 
     setMessages(prev => {
       const newMessages = [...prev, userMessage];
-      callOllama(newMessages);
-      return newMessages;
-    });
-    
-    setIsTyping(true);
-  };
-
-  const callOllama = async (currentMessages: IMessage[]) => {
-    try {
-      const apiMessages = currentMessages.map(msg => ({
-        role: msg.sender === 'user' ? 'user' : 'assistant',
-        content: msg.text
-      }));
-
-      const response = await fetch('http://localhost:11434/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'qwen2.5:latest',
-          messages: apiMessages,
-          stream: true
-        })
-      });
-
-      if (!response.ok || !response.body) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder('utf-8');
       
-      const aiMessageId = Date.now().toString();
-      setMessages(prev => [...prev, {
+      const aiMessageId = (Date.now() + 1).toString();
+      const initialAIMessage: IMessage = {
         id: aiMessageId,
         text: '',
         sender: 'ai',
         timestamp: new Date()
-      }]);
-
-      let done = false;
-      let fullText = '';
-
-      while (!done) {
-        const { value, done: readerDone } = await reader.read();
-        done = readerDone;
-        if (value) {
-          const chunk = decoder.decode(value, { stream: true });
-          const lines = chunk.split('\n').filter(line => line.trim() !== '');
-          for (const line of lines) {
-            try {
-              const parsed = JSON.parse(line);
-              if (parsed.message?.content) {
-                fullText += parsed.message.content;
-                setMessages(prev => prev.map(msg => 
-                  msg.id === aiMessageId ? { ...msg, text: fullText } : msg
-                ));
-              }
-            } catch (e) {
-              // Ignore invalid JSON lines
-            }
-          }
-        }
-      }
-      
-      setSuggestions([
-        { id: 's9', title: 'Submit a Ticket', description: 'Talk to a human agent directly.' },
-        { id: 's10', title: 'Browse FAQ', description: 'Common questions and answers.' }
-      ]);
-      setTicketMeta({ category: 'AI Assisted', priority: 'Medium', show: true });
-
-    } catch (error) {
-      console.error('Error communicating with Ollama:', error);
-      const errorResponse: IMessage = {
-        id: Date.now().toString(),
-        text: "Error connecting to Ollama. Please ensure Ollama is running locally and CORS is enabled (e.g., set OLLAMA_ORIGINS=\"*\").",
-        sender: 'ai',
-        timestamp: new Date()
       };
-      setMessages(prev => [...prev, errorResponse]);
-    } finally {
-      setIsTyping(false);
-    }
+      
+      // Delay the service call slightly to ensure state updates sequentially
+      setTimeout(() => {
+        setMessages(curr => [...curr, initialAIMessage]);
+        
+        OllamaService.streamChat(
+          newMessages,
+          (chunk: string) => {
+            setMessages(curr => curr.map(msg => 
+              msg.id === aiMessageId ? { ...msg, text: chunk } : msg
+            ));
+          },
+          (errorMsg: string) => {
+            setMessages(curr => [...curr, {
+              id: Date.now().toString(),
+              text: errorMsg,
+              sender: 'ai',
+              timestamp: new Date()
+            }]);
+            setIsTyping(false);
+          }
+        ).then(() => {
+          setSuggestions([
+            { id: 's9', title: 'Submit a Ticket', description: 'Talk to a human agent directly.' },
+            { id: 's10', title: 'Browse FAQ', description: 'Common questions and answers.' }
+          ]);
+          setTicketMeta({ category: 'AI Assisted', priority: 'Medium', show: true });
+          setIsTyping(false);
+        });
+      }, 0);
+      
+      return newMessages;
+    });
+    
+    setIsTyping(true);
   };
 
   const handleSendMessage = () => {
