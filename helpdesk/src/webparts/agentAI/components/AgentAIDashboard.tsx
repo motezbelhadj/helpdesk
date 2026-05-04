@@ -41,51 +41,8 @@ const AgentAIDashboard: React.FC<IAgentAIDashboardProps> = (props) => {
   });
   const [showSuccess, setShowSuccess] = React.useState(false);
 
-  // Predefined knowledge base
-  const knowledgeBase = [
-    {
-      keywords: ['password', 'login', 'access', 'account'],
-      response: "I can help with account and password issues. Have you tried resetting it through the self-service portal?",
-      suggestions: [
-        { id: 's1', title: 'Reset Your Password', description: 'Step-by-step guide to reset your company password.' },
-        { id: 's2', title: 'Unlock Account', description: 'How to unlock your account after too many failed attempts.' }
-      ],
-      category: 'Account Management',
-      priority: 'Medium'
-    },
-    {
-      keywords: ['printer', 'print', 'paper', 'toner'],
-      response: "It sounds like a printer problem. Please check if the printer is online and has enough paper.",
-      suggestions: [
-        { id: 's3', title: 'Add Network Printer', description: 'How to connect to a new office printer.' },
-        { id: 's4', title: 'Clear Paper Jam', description: 'Common solutions for paper jam issues.' }
-      ],
-      category: 'Hardware Support',
-      priority: 'Low'
-    },
-    {
-      keywords: ['vpn', 'network', 'internet', 'connection', 'slow'],
-      response: "Connectivity issues can be frustrating. Let me analyze your network request.",
-      suggestions: [
-        { id: 's5', title: 'VPN Connection Guide', description: 'Configure your VPN for remote work.' },
-        { id: 's6', title: 'Speed Test', description: 'Check your current internet connection speed.' }
-      ],
-      category: 'Network Services',
-      priority: 'High'
-    },
-    {
-      keywords: ['software', 'install', 'update', 'application', 'word', 'excel'],
-      response: "I can assist with software installations and updates. Which application are you referring to?",
-      suggestions: [
-        { id: 's7', title: 'Software Catalog', description: 'Browse and request available software.' },
-        { id: 's8', title: 'Update Office 365', description: 'Keep your productivity tools up to date.' }
-      ],
-      category: 'Software Support',
-      priority: 'Medium'
-    }
-  ];
 
-  const processMessage = (text: string) => {
+  const processMessage = async (text: string) => {
     const userMessage: IMessage = {
       id: Date.now().toString(),
       text: text,
@@ -93,47 +50,90 @@ const AgentAIDashboard: React.FC<IAgentAIDashboardProps> = (props) => {
       timestamp: new Date()
     };
 
-    setMessages(prev => [...prev, userMessage]);
+    setMessages(prev => {
+      const newMessages = [...prev, userMessage];
+      callOllama(newMessages);
+      return newMessages;
+    });
+    
     setIsTyping(true);
+  };
 
-    // Simulated Logic
-    setTimeout(() => {
-      const lowerInput = userMessage.text.toLowerCase();
-      let foundMatch = false;
+  const callOllama = async (currentMessages: IMessage[]) => {
+    try {
+      const apiMessages = currentMessages.map(msg => ({
+        role: msg.sender === 'user' ? 'user' : 'assistant',
+        content: msg.text
+      }));
 
-      for (const item of knowledgeBase) {
-        if (item.keywords.some(k => lowerInput.indexOf(k) !== -1)) {
-          const aiResponse: IMessage = {
-            id: (Date.now() + 1).toString(),
-            text: item.response,
-            sender: 'ai',
-            timestamp: new Date()
-          };
-          setMessages(prev => [...prev, aiResponse]);
-          setSuggestions(item.suggestions);
-          setTicketMeta({ category: item.category, priority: item.priority, show: true });
-          foundMatch = true;
-          break;
+      const response = await fetch('http://localhost:11434/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'qwen2.5:latest',
+          messages: apiMessages,
+          stream: true
+        })
+      });
+
+      if (!response.ok || !response.body) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder('utf-8');
+      
+      const aiMessageId = Date.now().toString();
+      setMessages(prev => [...prev, {
+        id: aiMessageId,
+        text: '',
+        sender: 'ai',
+        timestamp: new Date()
+      }]);
+
+      let done = false;
+      let fullText = '';
+
+      while (!done) {
+        const { value, done: readerDone } = await reader.read();
+        done = readerDone;
+        if (value) {
+          const chunk = decoder.decode(value, { stream: true });
+          const lines = chunk.split('\n').filter(line => line.trim() !== '');
+          for (const line of lines) {
+            try {
+              const parsed = JSON.parse(line);
+              if (parsed.message?.content) {
+                fullText += parsed.message.content;
+                setMessages(prev => prev.map(msg => 
+                  msg.id === aiMessageId ? { ...msg, text: fullText } : msg
+                ));
+              }
+            } catch (e) {
+              // Ignore invalid JSON lines
+            }
+          }
         }
       }
+      
+      setSuggestions([
+        { id: 's9', title: 'Submit a Ticket', description: 'Talk to a human agent directly.' },
+        { id: 's10', title: 'Browse FAQ', description: 'Common questions and answers.' }
+      ]);
+      setTicketMeta({ category: 'AI Assisted', priority: 'Medium', show: true });
 
-      if (!foundMatch) {
-        const defaultResponse: IMessage = {
-          id: (Date.now() + 1).toString(),
-          text: "I'm not sure I understand. Could you please provide more details or choose a category below?",
-          sender: 'ai',
-          timestamp: new Date()
-        };
-        setMessages(prev => [...prev, defaultResponse]);
-        setSuggestions([
-          { id: 's9', title: 'Submit a Ticket', description: 'Talk to a human agent directly.' },
-          { id: 's10', title: 'Browse FAQ', description: 'Common questions and answers.' }
-        ]);
-        setTicketMeta({ category: 'Other', priority: 'Low', show: true });
-      }
-
+    } catch (error) {
+      console.error('Error communicating with Ollama:', error);
+      const errorResponse: IMessage = {
+        id: Date.now().toString(),
+        text: "Error connecting to Ollama. Please ensure Ollama is running locally and CORS is enabled (e.g., set OLLAMA_ORIGINS=\"*\").",
+        sender: 'ai',
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, errorResponse]);
+    } finally {
       setIsTyping(false);
-    }, 1200);
+    }
   };
 
   const handleSendMessage = () => {
@@ -166,8 +166,8 @@ const AgentAIDashboard: React.FC<IAgentAIDashboardProps> = (props) => {
     <div className={`${styles.agentAIDashboard} ${props.isDarkTheme ? styles.dark : ''}`}>
       <div className={styles.header}>
         {props.dashboardPageUrl && (
-          <div 
-            className={styles.backButton} 
+          <div
+            className={styles.backButton}
             onClick={() => { if (props.dashboardPageUrl) window.location.href = props.dashboardPageUrl; }}
             title="Back to Dashboard"
           >
@@ -201,8 +201,8 @@ const AgentAIDashboard: React.FC<IAgentAIDashboardProps> = (props) => {
             {isTyping && <div className={styles.typing}>AgentAI is thinking...</div>}
           </div>
           <div className={styles.inputArea}>
-            <input 
-              type="text" 
+            <input
+              type="text"
               placeholder="Describe your issue here..."
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
@@ -237,9 +237,9 @@ const AgentAIDashboard: React.FC<IAgentAIDashboardProps> = (props) => {
                 </div>
                 <div className={styles.field}>
                   <label>Suggested Priority</label>
-                  <div className={styles.value} style={{ 
-                    color: ticketMeta.priority === 'High' ? '#ef4444' : 
-                          ticketMeta.priority === 'Medium' ? '#f59e0b' : '#22c55e' 
+                  <div className={styles.value} style={{
+                    color: ticketMeta.priority === 'High' ? '#ef4444' :
+                      ticketMeta.priority === 'Medium' ? '#f59e0b' : '#22c55e'
                   }}>
                     {ticketMeta.priority}
                   </div>
