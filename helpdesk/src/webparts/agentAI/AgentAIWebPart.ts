@@ -11,18 +11,31 @@ import { IReadonlyTheme } from '@microsoft/sp-component-base';
 import * as strings from 'AgentAIWebPartStrings';
 import AgentAIDashboard from './components/AgentAIDashboard';
 import { IAgentAIDashboardProps } from './components/IAgentAIDashboardProps';
+import { SPService } from '../../services/SPService';
 
 export interface IAgentAIWebPartProps {
   description: string;
   dashboardPageUrl: string;
+  agentPageUrl: string;
+  adminPageUrl: string;
 }
 
 export default class AgentAIWebPart extends BaseClientSideWebPart<IAgentAIWebPartProps> {
 
   private _isDarkTheme: boolean = false;
   private _environmentMessage: string = '';
+  private _spService: SPService;
 
   public render(): void {
+    // Inject global styles to force full width in SharePoint
+    const style = document.createElement('style');
+    style.innerHTML = `
+      .ControlZone, .CanvasZone, .CanvasZone-section { max-width: none !important; margin: 0 !important; padding: 0 !important; }
+      .ControlZone > div:first-child { max-width: none !important; }
+      [data-automation-id="CanvasZone"] { max-width: none !important; }
+    `;
+    document.head.appendChild(style);
+
     const element: React.ReactElement<IAgentAIDashboardProps> = React.createElement(
       AgentAIDashboard,
       {
@@ -32,7 +45,10 @@ export default class AgentAIWebPart extends BaseClientSideWebPart<IAgentAIWebPar
         hasTeamsContext: !!this.context.sdks.microsoftTeams,
         userDisplayName: this.context.pageContext.user.displayName,
         context: this.context,
-        dashboardPageUrl: this.properties.dashboardPageUrl
+        spService: this._spService,
+        dashboardPageUrl: this.properties.dashboardPageUrl,
+        agentPageUrl: this.properties.agentPageUrl,
+        adminPageUrl: this.properties.adminPageUrl
       }
     );
 
@@ -40,6 +56,7 @@ export default class AgentAIWebPart extends BaseClientSideWebPart<IAgentAIWebPar
   }
 
   protected onInit(): Promise<void> {
+    this._spService = new SPService(this.context);
     return this._getEnvironmentMessage().then(message => {
       this._environmentMessage = message;
     });
@@ -114,6 +131,14 @@ export default class AgentAIWebPart extends BaseClientSideWebPart<IAgentAIWebPar
                 PropertyPaneTextField('dashboardPageUrl', {
                   label: 'Dashboard Page URL',
                   description: 'The URL of the SharePoint page where the Helpdesk Dashboard is hosted.'
+                }),
+                PropertyPaneTextField('agentPageUrl', {
+                  label: 'Agent Page URL',
+                  description: 'The URL of the SharePoint page where the Agent Human web part is hosted.'
+                }),
+                PropertyPaneTextField('adminPageUrl', {
+                  label: 'Admin Page URL',
+                  description: 'The URL of the SharePoint page where the Admin Helpdesk web part is hosted.'
                 })
               ]
             }

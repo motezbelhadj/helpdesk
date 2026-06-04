@@ -1,0 +1,206 @@
+.notificationBar {
+  position: relative;
+  width: 100%;
+  height: 48px;
+  background-color: var(--themePrimary, #0078d4);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 16px;
+  z-index: 1000;
+}
+
+.bellButton {
+  background: transparent;
+  border: none;
+  color: white;
+  cursor: pointer;
+  position: relative;
+}
+
+.bellIcon {
+  width: 24px;
+  height: 24px;
+}
+
+.badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  background: red;
+  color: white;
+  border-radius: 50%;
+  padding: 2px 5px;
+  font-size: 12px;
+}
+
+.dropdownPanel {
+  position: absolute;
+  top: 48px;
+  right: 0;
+  width: 320px;
+  max-height: 400px;
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  border-radius: 4px;
+  overflow: hidden;
+  z-index: 1001;
+}
+
+.panelHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: #f3f2f1;
+  border-bottom: 1px solid #e1dfdd;
+}
+
+.panelTitle {
+  font-weight: 600;
+}
+
+.markAllBtn {
+  background: none;
+  border: none;
+  color: #0078d4;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.panelBody {
+  padding: 8px 12px;
+  overflow-y: auto;
+}
+
+.loadingState, .emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+}
+
+.spinner {
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #0078d4;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.emptyIcon {
+  font-size: 32px;
+  margin-bottom: 8px;
+}
+
+.notiItem {
+  display: flex;
+  align-items: flex-start;
+  border-bottom: 1px solid #e1dfdd;
+  padding: 8px 0;
+}
+
+.notiIcon {
+  margin-right: 8px;
+  font-size: 20px;
+}
+
+.notiContent {
+  flex: 1;
+}
+
+.notiTitle {
+  font-weight: 600;
+}
+
+.notiMessage {
+  font-size: 12px;
+  color: #605e5c;
+}
+
+.notiTime {
+  font-size: 10px;
+  color: #a19f9d;
+  text-align: right;
+}
+
+.dismissBtn {
+  background: none;
+  border: none;
+  color: #a19f9d;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.panelFooter {
+  padding: 8px 12px;
+  background: #f3f2f1;
+  text-align: center;
+  font-size: 12px;
+}
+
+// Native Suite Bar Integration Styles
+.suiteBarContainer {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 48px;
+  width: 48px;
+  box-sizing: border-box;
+}
+
+.suiteBarButton {
+  background: transparent;
+  border: none;
+  color: #323130;
+  cursor: pointer;
+  position: relative;
+  height: 48px;
+  width: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  margin: 0;
+  transition: background-color 0.15s ease, color 0.15s ease;
+  box-sizing: border-box;
+
+  &:hover {
+    background-color: #f3f2f1;
+    color: #000;
+  }
+}
+
+.suiteBarBellIcon {
+  width: 20px;
+  height: 20px;
+  stroke: #323130;
+}
+
+.suiteBarBadge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: #d13438; // Fluent UI error/danger red color
+  color: white;
+  border-radius: 50%;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  font-size: 10px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  border: 1px solid #ffffff; // subtle white border to contrast against the red
+}
+

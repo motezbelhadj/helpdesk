@@ -18,44 +18,42 @@ export interface IDashboardProps {
  * 
  * Displays the agent's command center overview, including key performance 
  * indicators (KPIs) and a list of urgent tickets requiring immediate action.
+ * 
+ * Redesigned to match the Helpdesk premium style.
  */
-export const AgentHumanDashboard: React.FC<IDashboardProps> = ({ tickets, onNavigateToList, onNavigateToDetails, onNavigateToLeaderboard, userPageUrl }) => {
+export const AgentHumanDashboard: React.FC<IDashboardProps> = ({ tickets, onNavigateToList, onNavigateToDetails, onNavigateToLeaderboard }) => {
   const stats = {
-    pending: tickets.filter(t => t.Status === 'Pending' || t.Statut === 'Nouveau' || t.status === 'Pending').length,
-    inProgress: tickets.filter(t => t.Status === 'In Progress' || t.Statut === 'En cours' || t.Status === 'Awaiting Feedback').length,
-    resolved: tickets.filter(t => t.Status === 'Resolved' || t.Statut === 'Resolu' || t.status === 'Resolved').length,
-    urgent: tickets.filter(t => t.Priority === 'High' || t.Priorite === 'Haute' || t.Priority === 'Urgent' || t.Priorite === 'Urgent' || t.Priorite === 'Haute').length
+    pending: tickets.filter(t => {
+      const s = (t.Status || t.Statut || t.status || '').toLowerCase();
+      return s === 'pending' || s === 'nouveau' || s === 'new';
+    }).length,
+    inProgress: tickets.filter(t => {
+      const s = (t.Status || t.Statut || t.status || '').toLowerCase();
+      return s === 'in progress' || s === 'en cours' || s === 'awaiting feedback';
+    }).length,
+    resolved: tickets.filter(t => {
+      const s = (t.Status || t.Statut || t.status || '').toLowerCase();
+      return s === 'resolved' || s === 'resolu' || s === 'résolu';
+    }).length,
+    urgent: tickets.filter(t => {
+      const p = (t.Priority || t.Priorite || '').toLowerCase();
+      return p === 'high' || p === 'haute' || p === 'urgent';
+    }).length
   };
 
   const urgentTickets = tickets
-    .filter(t => t.Priority === 'High' || t.Priorite === 'Haute' || t.Priority === 'Urgent' || t.Priorite === 'Urgent')
+    .filter(t => {
+      const p = (t.Priority || t.Priorite || '').toLowerCase();
+      const s = (t.Status || t.Statut || t.status || '').toLowerCase();
+      const isUrgent = p === 'high' || p === 'haute' || p === 'urgent';
+      const isNotResolved = s !== 'resolved' && s !== 'resolu' && s !== 'résolu';
+      return isUrgent && isNotResolved;
+    })
     .slice(0, 5);
 
   return (
     <div className={styles.dashboard}>
-      <header className={styles.header}>
-        <div>
-          <h2>Agent Command Center</h2>
-          <p style={{ margin: '8px 0 0 0', opacity: 0.8, fontSize: '0.9rem' }}>Welcome back. Here is your service overview.</p>
-        </div>
-        <div style={{ display: 'flex', gap: '12px' }}>
-          <button className={styles.btnPrimary} style={{ background: '#fef3c7', color: '#92400e', boxShadow: 'none' }} onClick={onNavigateToLeaderboard}>
-            <Icon iconName="Trophy2Solid" style={{ marginRight: '8px' }} />
-            Leaderboard
-          </button>
-          <button className={styles.btnPrimary} style={{ background: 'var(--brand-text-white)', color: 'var(--brand-orange)' }} onClick={onNavigateToList}>
-            <Icon iconName="List" style={{ marginRight: '8px' }} />
-            My Ticket Queue
-          </button>
-          {userPageUrl && (
-            <button className={styles.btnPrimary} style={{ background: 'rgba(255,255,255,0.2)', boxShadow: 'none' }} onClick={() => window.location.href = userPageUrl}>
-              <Icon iconName="Back" style={{ marginRight: '8px' }} />
-              User Portal
-            </button>
-          )}
-        </div>
-      </header>
-
+      {/* KPI Row */}
       <div className={styles.kpiRow}>
         <div className={styles.kpiCard}>
           <span className={styles.kpiValue} style={{ color: '#3b82f6' }}>{stats.pending}</span>
@@ -75,48 +73,54 @@ export const AgentHumanDashboard: React.FC<IDashboardProps> = ({ tickets, onNavi
         </div>
       </div>
 
+      {/* Urgent Attention Section */}
       <section className={styles.section}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
           <Icon iconName="Warning" style={{ color: '#ef4444', fontSize: '20px' }} />
           <h3 style={{ margin: 0, border: 'none' }}>Urgent Attention Required</h3>
         </div>
-        <p style={{ color: '#64748b', fontSize: '0.9rem', marginBottom: '24px' }}>Immediate action is needed for the following high-priority cases.</p>
-        
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '24px' }}>Immediate action is needed for the following high-priority cases.</p>
+
         {urgentTickets.length > 0 ? (
-          <table className={styles.ticketTable}>
-            <thead>
-              <tr>
-                <th>Reference</th>
-                <th>Subject</th>
-                <th>Category</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {urgentTickets.map(t => (
-                <tr key={t.Id} onClick={() => onNavigateToDetails(t.Id)}>
-                  <td style={{ fontWeight: 700, color: 'var(--brand-dark-blue)' }}>{t.Reference || `TK-${t.Id}`}</td>
-                  <td>{t.Title}</td>
-                  <td>{t.Category || t.Categorie || 'General'}</td>
-                  <td>
-                    <span className={`${styles.status} ${
-                      t.Status === 'In Progress' ? styles.inProgress : 
-                      t.Status === 'Awaiting Feedback' ? styles.awaitingFeedback :
-                      t.Status === 'Resolved' || t.Status === 'Resolu' || t.status === 'Resolved' ? styles.resolved :
-                      styles.pending}`}>
-                      {t.Status || 'Pending'}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div className={styles.ticketList}>
+            {urgentTickets.map(t => {
+              const status = (t.Status || t.Statut || t.status || 'Pending');
+              const sLower = status.toLowerCase();
+              let badgeClass = styles.pending;
+              if (sLower === 'in progress') badgeClass = styles.inProgress;
+              else if (sLower.includes('awaiting')) badgeClass = styles.awaitingFeedback;
+              else if (sLower === 'resolved' || sLower === 'resolu') badgeClass = styles.resolved;
+
+              return (
+                <div key={t.Id} className={styles.ticketItem} onClick={() => onNavigateToDetails(t.Id)}>
+                  <div className={styles.ticketInfo}>
+                    <div className={styles.ticketTitle}>
+                      <strong>{t.Reference || `TK-${t.Id}`}:</strong> {t.Title}
+                    </div>
+                    <div className={styles.ticketMeta}>
+                      {t.Category || t.Categorie || 'General'} • Requested by {t.Author?.Title || 'User'}
+                    </div>
+                  </div>
+                  <div className={styles.ticketBadges}>
+                    <span className={`${styles.status} ${badgeClass}`}>{status}</span>
+                    <span className={`${styles.status} ${styles.urgent}`}>Urgent</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         ) : (
-          <div style={{ textAlign: 'center', padding: '40px', background: '#f8fafc', borderRadius: '12px' }}>
+          <div style={{ textAlign: 'center', padding: '40px', background: '#f8fafc', borderRadius: '12px', border: '1px solid var(--card-border)' }}>
             <Icon iconName="Completed" style={{ fontSize: '48px', color: '#10b981', marginBottom: '16px' }} />
-            <p style={{ fontWeight: 600, color: '#1e293b' }}>No urgent tickets at the moment. Well done!</p>
+            <p style={{ fontWeight: 600, color: 'var(--brand-dark-blue)' }}>No urgent tickets at the moment. Well done!</p>
           </div>
         )}
+
+        <div style={{ marginTop: '24px', textAlign: 'right' }}>
+          <button className={styles.btnPrimary} onClick={onNavigateToList}>
+            View Full Queue
+          </button>
+        </div>
       </section>
     </div>
   );

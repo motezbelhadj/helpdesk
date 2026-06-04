@@ -16,15 +16,16 @@ app.post('/api/chat', async (req, res) => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: model || 'qwen2.5:latest',
+        model: model || 'mistral:latest',
         messages: messages,
         stream: stream !== undefined ? stream : true
       })
     });
 
     if (!ollamaResponse.ok) {
-      console.error('Ollama returned error:', ollamaResponse.status);
-      return res.status(ollamaResponse.status).send('Error from Ollama');
+      const errorText = await ollamaResponse.text();
+      console.error('Ollama returned error:', ollamaResponse.status, errorText);
+      return res.status(ollamaResponse.status).send(`Error from Ollama: ${errorText}`);
     }
 
     // Set headers for streaming

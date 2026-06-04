@@ -5,7 +5,7 @@
     "id": "a3114ca5-e213-4c5b-bf4c-40fd98faadc4",
     "version": "1.0.0.0",
     "includeClientSideAssets": true,
-    "skipFeatureDeployment": true,
+    "skipFeatureDeployment": false,
     "isDomainIsolated": false,
     "developer": {
       "name": "",
@@ -30,7 +30,13 @@
         "title": "helpdesk Feature",
         "description": "The feature that activates elements of the helpdesk solution.",
         "id": "aab93f10-dfad-4905-afd7-c67ee1ae4a42",
-        "version": "1.0.0.0"
+        "version": "1.0.0.0",
+        "assets": {
+          "elementManifests": [
+            "elements.xml",
+            "clientsideinstance.xml"
+          ]
+        }
       }
     ]
   },

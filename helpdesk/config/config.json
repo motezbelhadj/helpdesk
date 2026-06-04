@@ -33,6 +33,14 @@
           "manifest": "./src/webparts/agentAI/AgentAIWebPart.manifest.json"
         }
       ]
+    },
+    "notification-header-application-customizer": {
+      "components": [
+        {
+          "entrypoint": "./lib/extensions/notificationHeader/NotificationHeaderApplicationCustomizer.js",
+          "manifest": "./src/extensions/notificationHeader/NotificationHeaderApplicationCustomizer.manifest.json"
+        }
+      ]
     }
   },
   "externals": {},

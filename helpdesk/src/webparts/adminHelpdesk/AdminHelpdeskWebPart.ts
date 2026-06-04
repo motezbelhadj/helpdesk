@@ -24,6 +24,15 @@ export default class AdminHelpdeskWebPart extends BaseClientSideWebPart<IAdminHe
   private _environmentMessage: string = '';
 
   public render(): void {
+    // Inject global styles to force full width in SharePoint
+    const style = document.createElement('style');
+    style.innerHTML = `
+      .ControlZone, .CanvasZone, .CanvasZone-section { max-width: none !important; margin: 0 !important; padding: 0 !important; }
+      .ControlZone > div:first-child { max-width: none !important; }
+      [data-automation-id="CanvasZone"] { max-width: none !important; }
+    `;
+    document.head.appendChild(style);
+
     const element: React.ReactElement<IAdminHelpdeskProps> = React.createElement(
       AdminHelpdesk,
       {

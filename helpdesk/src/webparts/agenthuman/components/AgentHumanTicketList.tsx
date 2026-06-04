@@ -18,130 +18,110 @@ export interface ITicketListProps {
 /**
  * AgentHumanTicketList Component
  * 
- * Renders a searchable and filterable table of tickets assigned to the current agent.
+ * Renders a searchable and filterable list of tickets assigned to the current agent.
+ * Redesigned to match the premium Helpdesk style.
  */
 export const AgentHumanTicketList: React.FC<ITicketListProps> = ({ tickets, onNavigateToDetails, onBack, spService }) => {
   const [filter, setFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
 
   const filteredTickets = tickets.filter(t => {
-    const matchesSearch = t.Title?.toLowerCase().includes(filter.toLowerCase()) || 
-                          t.Reference?.toLowerCase().includes(filter.toLowerCase());
+    const matchesSearch = (t.Title || '').toLowerCase().includes(filter.toLowerCase()) || 
+                          (t.Reference || '').toLowerCase().includes(filter.toLowerCase());
     const matchesStatus = statusFilter === 'All' || t.Status === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
   return (
-    <div className={styles.section}>
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
-        <h2 style={{ margin: 0, color: 'var(--brand-dark-blue)', fontSize: '1.5rem' }}>My Assigned Tickets</h2>
-        <button onClick={onBack} className={styles.btnPrimary} style={{ background: '#64748b', boxShadow: 'none' }}>
-           <Icon iconName="ChevronLeft" style={{ marginRight: '8px' }} />
-           Back to Dashboard
-        </button>
-      </header>
-
-      <div style={{ display: 'flex', gap: '16px', marginBottom: '32px' }}>
-        <div style={{ position: 'relative', flex: 1 }}>
-          <Icon iconName="Search" style={{ position: 'absolute', left: '16px', top: '14px', color: '#94a3b8' }} />
-          <input 
-            type="text" 
-            placeholder="Search by ID or Subject..." 
-            className={styles.input} 
-            style={{ paddingLeft: '44px' }}
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-          />
+    <div className={styles.dashboard}>
+      {/* List Header / Filters */}
+      <div className={styles.whiteCard} style={{ marginBottom: '24px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+            <h2 style={{ margin: 0, color: 'var(--brand-dark-blue)', fontSize: '1.4rem' }}>My Assigned Tickets</h2>
+            <DefaultButton onClick={onBack} style={{ borderRadius: '8px' }}>
+                <Icon iconName="ChevronLeft" style={{ marginRight: '8px' }} />
+                Back
+            </DefaultButton>
         </div>
-        <div style={{ position: 'relative', minWidth: '200px' }}>
-          <Icon iconName="Filter" style={{ position: 'absolute', left: '16px', top: '14px', color: '#94a3b8' }} />
-          <select 
-            className={styles.select} 
-            style={{ paddingLeft: '44px' }}
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-          >
-             <option value="All">All Statuses</option>
-            <option value="Pending">Pending</option>
-            <option value="In Progress">In Progress</option>
-            <option value="Awaiting Feedback">Awaiting Feedback</option>
-            <option value="Resolved">Resolved</option>
-          </select>
+
+        <div style={{ display: 'flex', gap: '16px' }}>
+            <div style={{ position: 'relative', flex: 1 }}>
+                <Icon iconName="Search" style={{ position: 'absolute', left: '16px', top: '14px', color: '#94a3b8', zIndex: 1 }} />
+                <input 
+                    type="text" 
+                    placeholder="Search by ID or Subject..." 
+                    className={styles.input} 
+                    style={{ paddingLeft: '44px', width: '100%' }}
+                    value={filter}
+                    onChange={(e) => setFilter(e.target.value)}
+                />
+            </div>
+            <div style={{ position: 'relative', minWidth: '200px' }}>
+                <Icon iconName="Filter" style={{ position: 'absolute', left: '16px', top: '14px', color: '#94a3b8', zIndex: 1 }} />
+                <select 
+                    className={styles.select} 
+                    style={{ paddingLeft: '44px', width: '100%' }}
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value)}
+                >
+                    <option value="All">All Statuses</option>
+                    <option value="Pending">Pending</option>
+                    <option value="In Progress">In Progress</option>
+                    <option value="Awaiting Feedback">Awaiting Feedback</option>
+                    <option value="Resolved">Resolved</option>
+                </select>
+            </div>
         </div>
       </div>
 
-      <div style={{ overflowX: 'auto', width: '100%', paddingBottom: '16px' }}>
-        <table className={styles.ticketTable} style={{ minWidth: '1000px' }}>
-          <thead>
-          <tr>
-            <th>Titre</th>
-            <th>Reference</th>
-            <th>Description</th>
-            <th>Categorie</th>
-            <th>Priorite</th>
-            <th>Cree par</th>
-            <th>AssignedTo</th>
-            <th>Status</th>
-            <th>Date</th>
-            <th>SLA Deadline</th>
-          </tr>
-        </thead>
-        <tbody>
-          {filteredTickets.map(t => (
-            <tr key={t.Id} onClick={() => onNavigateToDetails(t.Id)}>
-              <td style={{ fontWeight: 700, color: 'var(--brand-dark-blue)' }}>{t.Title}</td>
-              <td style={{ fontSize: '0.85rem', whiteSpace: 'nowrap' }}>{t.Reference || `TK-${t.Id}`}</td>
-              <td style={{ maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '0.85rem', color: '#64748b' }}>
-                {t.Description}
-              </td>
-              <td>
-                <span className={styles.status} style={{ background: '#f1f5f9', color: '#475569', border: '1px solid #e2e8f0' }}>
-                  {t.Category || t.Categorie || 'General'}
-                </span>
-              </td>
-              <td>
-                <span className={`${styles.status} ${
-                  (t.Priority === 'High' || t.Priorite === 'Haute') ? styles.high : 
-                  (t.Priority === 'Urgent' || t.Priorite === 'Urgent') ? styles.urgent : ''
-                }`}>
-                  {t.Priority || t.Priorite || 'Normal'}
-                </span>
-              </td>
-              <td style={{ fontSize: '0.85rem' }}>{t.Author?.Title || 'User'}</td>
-              <td style={{ fontSize: '0.85rem' }}>{t.AssignedTo?.Title || 'Unassigned'}</td>
-              <td>
-                <span className={`${styles.status} ${
-                  t.Status === 'In Progress' ? styles.inProgress : 
-                  t.Status === 'Pending' ? styles.pending : 
-                  t.Status === 'Awaiting Feedback' ? styles.awaitingFeedback :
-                  t.Status === 'Resolved' || t.Status === 'Resolu' || t.status === 'Resolved' ? styles.resolved :
-                  styles.pending}`}>
-                  {t.Status || 'Pending'}
-                </span>
-              </td>
-              <td style={{ fontSize: '0.8rem', color: '#64748b' }}>
-                {t.Created ? new Date(t.Created).toLocaleDateString() : 'N/A'}
-              </td>
-              <td>
-                {t.Status !== 'Resolved' && (
-                  <SLACountdown 
-                    targetDate={t.DueDate ? new Date(t.DueDate) : spService.calculateDeadline(new Date(t.Created), t.Priority || t.Priorite || 'Normal')} 
-                    isResolved={false} 
-                  />
-                )}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      {/* Ticket List */}
+      <div className={styles.ticketList}>
+        {filteredTickets.map(t => {
+            const status = (t.Status || t.Statut || t.status || 'Pending');
+            const sLower = status.toLowerCase();
+            let badgeClass = styles.pending;
+            if (sLower === 'in progress') badgeClass = styles.inProgress;
+            else if (sLower.includes('awaiting')) badgeClass = styles.awaitingFeedback;
+            else if (sLower === 'resolved' || sLower === 'resolu') badgeClass = styles.resolved;
+
+            const isHighPrio = (t.Priority || t.Priorite || '').toLowerCase() === 'high' || (t.Priority || t.Priorite || '').toLowerCase() === 'urgent';
+            const deadlineDate = t.DueDate ? new Date(t.DueDate) : spService.calculateDeadline(new Date(t.Created), t.Priority || t.Priorite || 'Normal');
+
+            return (
+                <div key={t.Id} className={styles.ticketItem} onClick={() => onNavigateToDetails(t.Id)}>
+                    <div className={styles.ticketInfo}>
+                        <div className={styles.ticketTitle}>
+                            <strong>{t.Reference || `TK-${t.Id}`}:</strong> {t.Title}
+                        </div>
+                        <div className={styles.ticketMeta}>
+                            {t.Category || t.Categorie || 'General'} • Requested by {t.Author?.Title || 'User'} • Created {new Date(t.Created).toLocaleDateString()}
+                        </div>
+                    </div>
+                    <div className={styles.ticketBadges}>
+                        <span className={`${styles.status} ${badgeClass}`}>{status}</span>
+                        {isHighPrio && <span className={`${styles.status} ${styles.urgent}`}>High Priority</span>}
+                        {status !== 'Resolved' && (
+                            <SLACountdown targetDate={deadlineDate} isResolved={false} />
+                        )}
+                    </div>
+                </div>
+            );
+        })}
+
+        {filteredTickets.length === 0 && (
+            <div className={styles.whiteCard} style={{ textAlign: 'center', padding: '60px' }}>
+                <Icon iconName="SearchData" style={{ fontSize: '48px', marginBottom: '16px', color: 'var(--text-muted)' }} />
+                <p style={{ color: 'var(--text-muted)' }}>No tickets found matching your filters.</p>
+            </div>
+        )}
       </div>
-      
-      {filteredTickets.length === 0 && (
-        <div style={{ textAlign: 'center', padding: '60px', color: '#64748b' }}>
-          <Icon iconName="SearchData" style={{ fontSize: '48px', marginBottom: '16px', opacity: 0.5 }} />
-          <p>No tickets found matching your filters.</p>
-        </div>
-      )}
     </div>
   );
 };
+
+// Internal component for the button to avoid missing imports in this block
+const DefaultButton: React.FC<{onClick: () => void, style?: React.CSSProperties, children: React.ReactNode}> = ({onClick, style, children}) => (
+    <button className={styles.btnPrimary} style={{ background: 'white', color: 'var(--brand-dark-blue)', border: '1px solid var(--card-border)', boxShadow: 'none', ...style }} onClick={onClick}>
+        {children}
+    </button>
+);

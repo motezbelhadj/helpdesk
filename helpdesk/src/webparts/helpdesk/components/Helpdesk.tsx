@@ -1,8 +1,6 @@
 import * as React from 'react';
 import type { IHelpdeskProps } from './IHelpdeskProps';
 import { HelpdeskDashboard } from './HelpdeskDashboard';
-import { TicketForm } from './TicketForm';
-import { UserProfile } from './UserProfile';
 import { SPService } from '../../../services/SPService';
 
 /**
@@ -29,6 +27,16 @@ export default class Helpdesk extends React.Component<IHelpdeskProps, IHelpdeskS
     this._spService = new SPService(this.props.context);
   }
 
+  public componentDidMount(): void {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('action') === 'new') {
+      this.setState({ showForm: true });
+      // Clean up URL
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, '', newUrl);
+    }
+  }
+
   public render(): React.ReactElement<IHelpdeskProps> {
     const {
       isDarkTheme,
@@ -41,56 +49,39 @@ export default class Helpdesk extends React.Component<IHelpdeskProps, IHelpdeskS
 
     return (
       <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', backgroundColor: '#f8f9fa' }}>
-        {this.state.showForm ? (
-          <TicketForm 
-            spService={this._spService}
-            currentUserDisplayName={userDisplayName}
-            onClose={() => this.setState({ showForm: false })}
-          />
-        ) : this.state.showProfile ? (
-          <UserProfile
-            userDisplayName={userDisplayName}
-            userEmail={userEmail}
-            isDarkTheme={isDarkTheme}
-            spService={this._spService}
-            onBack={() => this.setState({ showProfile: false })}
-          />
-        ) : (
-          <HelpdeskDashboard
-            userDisplayName={userDisplayName}
-            userEmail={userEmail}
-            isDarkTheme={isDarkTheme}
-            context={this.props.context}
-            spService={this._spService}
-            onNewTicket={() => this.setState({ showForm: true })}
-            onNavigateToProfile={() => this.setState({ showProfile: true })}
-            onNavigateToAdmin={() => { 
-              if (adminPageUrl) {
-                window.location.href = adminPageUrl;
-              } else {
-                alert('Please configure the Admin Page URL in the web part properties first.'); 
+        <HelpdeskDashboard
+          userDisplayName={userDisplayName}
+          userEmail={userEmail}
+          isDarkTheme={isDarkTheme}
+          context={this.props.context}
+          spService={this._spService}
+          initialView={this.state.showForm ? 'new-ticket' : this.state.showProfile ? 'profile' : 'dashboard'}
+          onNavigateToAdmin={() => { 
+            if (adminPageUrl) {
+              window.location.href = adminPageUrl;
+            } else {
+              alert('Please configure the Admin Page URL in the web part properties first.'); 
+            }
+          }}
+          onNavigateToAgent={() => {
+            if (agentPageUrl) {
+              window.location.href = agentPageUrl;
+            } else {
+              alert('Please configure the Agent Page URL in the web part properties first.');
+            }
+          }}
+          onNavigateToAgentAI={(searchText?: string) => {
+            if (agentAIPageUrl) {
+              const url = new URL(agentAIPageUrl, window.location.origin);
+              if (searchText) {
+                url.searchParams.set('q', searchText);
               }
-            }}
-            onNavigateToAgent={() => {
-              if (agentPageUrl) {
-                window.location.href = agentPageUrl;
-              } else {
-                alert('Please configure the Agent Page URL in the web part properties first.');
-              }
-            }}
-            onNavigateToAgentAI={(searchText?: string) => {
-              if (agentAIPageUrl) {
-                const url = new URL(agentAIPageUrl, window.location.origin);
-                if (searchText) {
-                  url.searchParams.set('q', searchText);
-                }
-                window.location.href = url.toString();
-              } else {
-                alert('Please configure the Agent AI Page URL in the web part properties first.');
-              }
-            }}
-          />
-        )}
+              window.location.href = url.toString();
+            } else {
+              alert('Please configure the Agent AI Page URL in the web part properties first.');
+            }
+          }}
+        />
       </div>
     );
   }

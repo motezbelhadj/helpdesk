@@ -2,5 +2,5 @@
   "$schema": "https://developer.microsoft.com/json-schemas/spfx-build/spfx-serve.schema.json",
   "port": 4321,
   "https": true,
-  "initialPage": "https://s6rr.sharepoint.com/sites/helpdeskandTicketingSystem1?debug=true&noredir=true&debugManifestsFile=https://localhost:4321/temp/manifests.js"
+  "initialPage": "https://s6rr.sharepoint.com/sites/helpdeskandTicketingSystem1?debug=true&noredir=true&debugManifestsFile=https://localhost:4321/temp/manifests.js&loadSPFX=true&customActions={\"b1e2c3d4-e5f6-7890-abcd-ef1234567890\":{\"location\":\"ClientSideExtension.ApplicationCustomizer\",\"properties\":{}}}"
 }

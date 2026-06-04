@@ -1,4 +1,5 @@
 import { WebPartContext } from "@microsoft/sp-webpart-base";
+import { ITicket, IUserListItem, IComment, IAgentStats } from "../models/types";
 import { spfi, SPFI, SPFx } from "@pnp/sp";
 import "@pnp/sp/webs";
 import "@pnp/sp/lists";
@@ -32,7 +33,7 @@ export class SPService {
      * @param ticketDetails The metadata for the new ticket
      * @param attachment Optional file attachment
      */
-    public async createTicket(ticketDetails: any, attachment: File | null): Promise<void> {
+    public async createTicket(ticketDetails: Partial<ITicket>, attachment: File | null): Promise<void> {
         try {
             // Get current user to populate Creepar (Person column)
             const user = await this._sp.web.currentUser();
@@ -65,7 +66,7 @@ export class SPService {
      * @param userId The SharePoint ID of the user
      * @returns A promise that resolves to an array of ticket items
      */
-    public async getUserTickets(userId: number): Promise<any[]> {
+    public async getUserTickets(userId: number): Promise<ITicket[]> {
         try {
             return await this._sp.web.lists.getByTitle("ticket").items
                 .select("Id", "Title", "Status", "Created", "Modified", "Author/Id", "Author/Title", "Editor/Title", "Reference", "Categorie", "Priorite", "Description", "DueDate")
@@ -83,7 +84,7 @@ export class SPService {
      * 
      * @returns A promise that resolves to an array of all ticket items
      */
-    public async getAllTickets(): Promise<any[]> {
+    public async getAllTickets(): Promise<ITicket[]> {
         try {
             return await this._sp.web.lists.getByTitle("ticket").items
                 .select("Id", "Title", "Status", "Created", "Modified", "Author/Id", "Author/Title", "Reference", "Categorie", "Priorite", "Description", "AssignedTo/Id", "AssignedTo/Title", "DueDate")
@@ -101,7 +102,7 @@ export class SPService {
      * @param userId The SharePoint ID of the agent
      * @returns A promise that resolves to an array of tickets assigned to the agent
      */
-    public async getAgentTickets(userId: number): Promise<any[]> {
+    public async getAgentTickets(userId: number): Promise<ITicket[]> {
         try {
             return await this._sp.web.lists.getByTitle("ticket").items
                 .select("Id", "Title", "Status", "Created", "Author/Id", "Author/Title", "Reference", "Categorie", "Priorite", "Description", "AssignedTo/Id", "AssignedTo/Title", "DueDate")
@@ -119,12 +120,12 @@ export class SPService {
      * 
      * @returns A promise that resolves to an array of agent users
      */
-    public async getAgents(): Promise<any[]> {
+    public async getAgents(): Promise<IUserListItem[]> {
         try {
             const users = await this._sp.web.lists.getByTitle("user").items
                 .select("Id", "user/Title", "user/Id", "role", "Role")
                 .expand("user")();
-            return users.filter((u: any) => u.role === 'Agent' || u.Role === 'Agent');
+            return users.filter((u: IUserListItem) => u.role === 'Agent' || u.Role === 'Agent');
         } catch (error) {
             console.error("Error fetching agents", error);
             throw error;
@@ -137,7 +138,7 @@ export class SPService {
      * @param spId The SharePoint ID of the ticket
      * @param updates An object containing the fields to update
      */
-    public async updateTicket(spId: number, updates: any): Promise<void> {
+    public async updateTicket(spId: number, updates: Partial<ITicket>): Promise<void> {
         try {
             await this._sp.web.lists.getByTitle("ticket").items.getById(spId).update(updates);
         } catch (error) {
@@ -187,7 +188,7 @@ export class SPService {
      * 
      * @returns A promise that resolves to the user list item
      */
-    public async getCurrentUserListItem(): Promise<any> {
+    public async getCurrentUserListItem(): Promise<IUserListItem | null> {
         try {
             const user = await this._sp.web.currentUser();
             const items = await this._sp.web.lists.getByTitle("user").items
@@ -207,7 +208,7 @@ export class SPService {
      * @param itemId The SharePoint ID of the user item
      * @param updates An object containing the fields to update
      */
-    public async updateUserProfile(itemId: number, updates: any): Promise<void> {
+    public async updateUserProfile(itemId: number, updates: Partial<IUserListItem>): Promise<void> {
         try {
             await this._sp.web.lists.getByTitle("user").items.getById(itemId).update(updates);
         } catch (error) {
@@ -222,7 +223,7 @@ export class SPService {
      * @param userId The SharePoint ID of the agent
      * @returns A promise that resolves to a stats object
      */
-    public async getAgentStats(userId: number): Promise<any> {
+    public async getAgentStats(userId: number): Promise<IAgentStats> {
         try {
             const tickets = await this._sp.web.lists.getByTitle("ticket").items
                 .filter(`AssignedToId eq ${userId}`)
@@ -248,7 +249,7 @@ export class SPService {
      * @param ticketId The SharePoint ID of the ticket
      * @returns A promise that resolves to an array of comment items
      */
-    public async getComments(ticketId: number): Promise<any[]> {
+    public async getComments(ticketId: number): Promise<IComment[]> {
         try {
             // Attempt to get from ticket_comments list
             return await this._sp.web.lists.getByTitle("ticket_comments").items

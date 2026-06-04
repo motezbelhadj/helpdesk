@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { useState, useEffect } from 'react';
 import styles from './Dashboard.module.scss';
-import { ITicket, MOCK_ANNOUNCEMENTS } from '../MockData';
+import { ITicket } from '../MockData';
 import { escape } from '@microsoft/sp-lodash-subset';
 import { SPHttpClient, SPHttpClientResponse } from '@microsoft/sp-http';
 import { WebPartContext } from '@microsoft/sp-webpart-base';
@@ -9,6 +9,8 @@ import { Icon } from '@fluentui/react';
 import { SPService } from '../../../services/SPService';
 import { UserTicketDetails } from './UserTicketDetails';
 import { SLACountdown } from './SLACountdown';
+import { TicketForm } from './TicketForm';
+import { UserProfile } from './UserProfile';
 
 /**
  * Properties for the HelpdeskDashboard component.
@@ -24,6 +26,7 @@ export interface IDashboardProps {
     onNavigateToAgentAI?: (searchText?: string) => void; // Optional callback for Agent AI navigation
     onNewTicket?: () => void;       // Optional callback to open new ticket form
     onNavigateToProfile?: () => void; // Optional callback to open user profile
+    initialView?: 'dashboard' | 'new-ticket' | 'profile'; // Initial view to display
 }
 
 /**
@@ -47,7 +50,7 @@ export interface ITicketNotification {
  * resolved tickets, system status, and quick action buttons.
  */
 export const HelpdeskDashboard: React.FC<IDashboardProps> = (props) => {
-    const { userDisplayName, isDarkTheme, context, onNavigateToAdmin, onNavigateToAgent, onNavigateToAgentAI, onNewTicket, onNavigateToProfile, spService } = props;
+    const { userDisplayName, isDarkTheme, context, onNavigateToAdmin, onNavigateToAgent, onNavigateToAgentAI, spService } = props;
     const [activeTickets, setActiveTickets] = useState<ITicket[]>([]);
     const [resolvedTickets, setResolvedTickets] = useState<ITicket[]>([]);
     const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -55,9 +58,14 @@ export const HelpdeskDashboard: React.FC<IDashboardProps> = (props) => {
     const [selectedTicketId, setSelectedTicketId] = useState<string | number | null>(null);
     const [refreshKey, setRefreshKey] = useState(0);
     const [pendingAgentTicketsCount, setPendingAgentTicketsCount] = useState<number>(0);
-    const [hasNotifications, setHasNotifications] = useState<boolean>(false);
-    const [isNotificationPanelOpen, setIsNotificationPanelOpen] = useState<boolean>(false);
-    const [notifications, setNotifications] = useState<ITicketNotification[]>([]);
+
+    const [activeView, setActiveView] = useState<'dashboard' | 'new-ticket' | 'profile'>(props.initialView || 'dashboard');
+
+    useEffect(() => {
+        if (props.initialView) {
+            setActiveView(props.initialView);
+        }
+    }, [props.initialView]);
 
     useEffect(() => {
         const fetchTickets = async (): Promise<void> => {
@@ -99,10 +107,7 @@ export const HelpdeskDashboard: React.FC<IDashboardProps> = (props) => {
                             return s === 'resolved' || s === 'resolu' || s === 'résolu';
                         }));
 
-                        // Logic for the red notification point: 
-                        // We will call a separate function to calculate notifications
-                        // including status changes and new messages.
-                        await calculateNotifications(data.value, user.Id);
+                        // Notifications are now handled by the global Application Customizer extension
                     }
                 }
             } catch (error) {
@@ -110,107 +115,6 @@ export const HelpdeskDashboard: React.FC<IDashboardProps> = (props) => {
             } finally {
                 setIsLoading(false);
             }
-        };
-
-        const calculateNotifications = async (rawTickets: any[], currentUserId: number): Promise<void> => {
-            const newNotifications: ITicketNotification[] = [];
-            const seenStatusKey = `helpdesk_seen_status_${currentUserId}`;
-            const seenCommentsKey = `helpdesk_seen_comments_${currentUserId}`;
-            
-            const seenStatus = JSON.parse(localStorage.getItem(seenStatusKey) || '{}');
-            const seenComments = JSON.parse(localStorage.getItem(seenCommentsKey) || '{}');
-            
-            for (const item of rawTickets) {
-                const ticketId = item.Id;
-                const reference = item.Reference || `TK-${item.Id}`;
-                const currentStatus = item.Statut || item.Status || 'Pending';
-                
-                // 1. Check for Status Change
-                // If the status is not Pending/Nouveau and it's different from what we last saw
-                if (currentStatus.toLowerCase() !== 'pending' && currentStatus.toLowerCase() !== 'nouveau') {
-                    if (seenStatus[ticketId] !== currentStatus) {
-                        newNotifications.push({
-                            id: `status_${ticketId}_${currentStatus}`,
-                            ticketId: reference,
-                            type: 'status',
-                            title: `Status Updated: ${reference}`,
-                            message: `Your ticket status is now "${currentStatus}".`,
-                            date: new Date(item.Modified).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                            rawDate: new Date(item.Modified),
-                            isRead: false
-                        });
-                    }
-                }
-
-                // 2. Check for New Messages
-                try {
-                    const comments = await spService.getComments(ticketId);
-                    if (comments.length > 0) {
-                        const lastComment = comments[comments.length - 1];
-                        // If last comment is NOT from current user and we haven't seen this comment ID yet
-                        if (lastComment.Author?.Title !== props.userDisplayName && seenComments[ticketId] !== lastComment.Id) {
-                            newNotifications.push({
-                                id: `msg_${ticketId}_${lastComment.Id}`,
-                                ticketId: reference,
-                                type: 'message',
-                                title: `New Message: ${reference}`,
-                                message: lastComment.Commentaire || lastComment.Text || 'New message from agent.',
-                                date: new Date(lastComment.Created).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                                rawDate: new Date(lastComment.Created),
-                                isRead: false
-                            });
-                        }
-                    }
-                } catch (e) {
-                    console.warn(`Could not check comments for ticket ${ticketId}`, e);
-                }
-
-                // 3. Check for Overdue
-                const priority = item.Priorite || 'Normal';
-                const deadline = item.DueDate ? new Date(item.DueDate) : spService.calculateDeadline(new Date(item.Created), priority);
-                const isOverdue = deadline.getTime() < new Date().getTime() && currentStatus.toLowerCase() !== 'resolved';
-                
-                const seenOverdueKey = `helpdesk_seen_overdue_${currentUserId}`;
-                const seenOverdue = JSON.parse(localStorage.getItem(seenOverdueKey) || '{}');
-
-                if (isOverdue && !seenOverdue[ticketId]) {
-                    newNotifications.push({
-                        id: `overdue_${ticketId}`,
-                        ticketId: reference,
-                        type: 'status',
-                        title: `TICKET OVERDUE: ${reference}`,
-                        message: `The SLA deadline for this ticket has passed.`,
-                        date: deadline.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                        rawDate: deadline,
-                        isRead: false
-                    });
-                }
-                
-                // 4. Check for Approaching Deadline (less than 4 hours remaining)
-                const timeRemainingMs = deadline.getTime() - new Date().getTime();
-                const isApproaching = timeRemainingMs > 0 && timeRemainingMs < (4 * 60 * 60 * 1000) && currentStatus.toLowerCase() !== 'resolved';
-
-                const seenApproachingKey = `helpdesk_seen_approaching_${currentUserId}`;
-                const seenApproaching = JSON.parse(localStorage.getItem(seenApproachingKey) || '{}');
-
-                if (isApproaching && !seenApproaching[ticketId]) {
-                    newNotifications.push({
-                        id: `approaching_${ticketId}`,
-                        ticketId: reference,
-                        type: 'status',
-                        title: `DEADLINE APPROACHING: ${reference}`,
-                        message: `This ticket is due in less than 4 hours!`,
-                        date: deadline.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                        rawDate: deadline,
-                        isRead: false
-                    });
-                }
-            }
-
-            // Sort by date descending
-            newNotifications.sort((a, b) => b.rawDate.getTime() - a.rawDate.getTime());
-            setNotifications(newNotifications);
-            setHasNotifications(newNotifications.length > 0);
         };
 
         const checkRole = async (): Promise<void> => {
@@ -247,236 +151,229 @@ export const HelpdeskDashboard: React.FC<IDashboardProps> = (props) => {
 
     return (
         <div className={`${styles.helpdeskDashboard} ${isDarkTheme ? styles.dark : ''}`}>
-            {/* 1. Smart Search & Instant Resolution */}
-            <header className={styles.searchHeader}>
-                <div className={styles.notificationWrapper}>
-                    <div 
-                        className={styles.notificationButton} 
-                        title="Notifications"
-                        onClick={() => setIsNotificationPanelOpen(true)}
-                    >
-                        <Icon iconName="Ringer" />
-                        {hasNotifications && <div className={styles.notificationBadge}></div>}
+            {/* Sidebar */}
+            <aside className={styles.sidebar}>
+                <div className={styles.brandLogo}>HelpDesk Pro</div>
+                
+                <div className={styles.navGroup}>
+                    <div className={`${styles.navItem} ${activeView === 'dashboard' ? styles.active : ''}`} onClick={() => setActiveView('dashboard')}>
+                        <Icon iconName="ViewDashboard" />
+                        <span>Dashboard</span>
                     </div>
-                </div>
-                <h1>Hello, {escape(userDisplayName)}</h1>
-                <p>How can we help you today?</p>
-                <div className={styles.searchInputWrapper}>
-                    <input 
-                        type="text" 
-                        placeholder="Describe your issue (e.g., 'I can't access my email')..." 
-                        onKeyDown={(e) => {
-                            if (e.key === 'Enter' && onNavigateToAgentAI) {
-                                onNavigateToAgentAI((e.target as HTMLInputElement).value);
-                            }
-                        }}
-                    />
-                </div>
-            </header>
-
-            <div className={styles.grid}>
-                <div className={styles.leftColumn}>
-                    {/* 2. Request Hub */}
-                    <section className={styles.section}>
-                        <div className={styles.glassCard}>
-                            <h3>Quick Actions</h3>
-                            <div className={styles.quickActions}>
-                                {userRole === 'Admin' && onNavigateToAdmin && (
-                                    <div className={styles.actionButton} onClick={onNavigateToAdmin}>
-                                        <span>⚙️</span>
-                                        <div>Admin Panel</div>
-                                    </div>
-                                )}
-                                {userRole === 'Agent' && onNavigateToAgent && (
-                                    <div className={styles.actionButton} onClick={onNavigateToAgent} style={{ borderColor: '#f58220', backgroundColor: '#fffaf5', position: 'relative' }}>
-                                        {pendingAgentTicketsCount > 0 && (
-                                            <div style={{
-                                                position: 'absolute',
-                                                top: '-8px',
-                                                right: '-8px',
-                                                backgroundColor: '#ef4444',
-                                                color: 'white',
-                                                borderRadius: '50%',
-                                                width: '24px',
-                                                height: '24px',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'center',
-                                                fontSize: '0.8rem',
-                                                fontWeight: 'bold',
-                                                boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-                                            }}>
-                                                {pendingAgentTicketsCount > 99 ? '99+' : pendingAgentTicketsCount}
-                                            </div>
-                                        )}
-                                        <Icon iconName="Headset" style={{ color: '#f58220', fontSize: '32px' }} />
-                                        <div style={{ color: '#f58220', fontWeight: 'bold' }}>Agent Human</div>
-                                    </div>
-                                )}
-                                <div className={styles.actionButton} onClick={onNewTicket}>
-                                    <span>➕</span>
-                                    <div>New Ticket</div>
-                                </div>
-                                <div className={styles.actionButton} onClick={onNavigateToProfile}>
-                                    <span>👤</span>
-                                    <div>My Profile</div>
-                                </div>
-                                {onNavigateToAgentAI && (
-                                    <div className={styles.actionButton} onClick={() => onNavigateToAgentAI && onNavigateToAgentAI()}>
-                                        <span>🤖</span>
-                                        <div>Agent AI</div>
-                                    </div>
-                                )}
-                                <div className={styles.actionButton}>
-                                    <span>❓</span>
-                                    <div>Common Fixes</div>
-                                </div>
-                            </div>
+                    <div className={`${styles.navItem} ${activeView === 'new-ticket' ? styles.active : ''}`} onClick={() => setActiveView('new-ticket')}>
+                        <Icon iconName="Add" />
+                        <span>New Ticket</span>
+                    </div>
+                    <div className={`${styles.navItem} ${activeView === 'profile' ? styles.active : ''}`} onClick={() => setActiveView('profile')}>
+                        <Icon iconName="Contact" />
+                        <span>My Profile</span>
+                    </div>
+                    {onNavigateToAgentAI && (
+                        <div className={styles.navItem} onClick={() => onNavigateToAgentAI()}>
+                            <Icon iconName="Robot" />
+                            <span>Agent AI</span>
                         </div>
-                    </section>
-
-                    {/* 3. Active Requests at a Glance */}
-                    <section className={styles.section}>
-                        <h3>Your Active Tickets {isLoading && '(Loading...)'}</h3>
-                        {!isLoading && activeTickets.length === 0 && <p>No active tickets found.</p>}
-                        {activeTickets.map(ticket => {
-                            const statusKey = ticket.status.replace(/\s+/g, '').charAt(0).toLowerCase() + ticket.status.replace(/\s+/g, '').slice(1);
-                            const statusStyle = styles[statusKey as keyof typeof styles] || '';
-                            return (
-                                <div key={ticket.id} className={`${styles.statusCard} ${statusStyle}`} onClick={() => setSelectedTicketId(ticket.id)} style={{ cursor: 'pointer', position: 'relative' }}>
-                                    <div style={{ flex: 1, marginRight: '10px' }}>
-                                        <strong>{ticket.id}</strong>: {ticket.title}
-                                        <div style={{ fontSize: '0.8em', color: '#605e5c' }}>{ticket.category} • Created {ticket.date}</div>
-                                    </div>
-                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
-                                        <span className={styles.badge}>{ticket.status}</span>
-                                        {ticket.status.toLowerCase() !== 'resolved' && ticket.dueDate && (
-                                            <SLACountdown targetDate={ticket.dueDate} isResolved={false} />
-                                        )}
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </section>
-                </div>
-
-
-                <div className={styles.rightColumn}>
-                    {/* 4. Maintenance & Important Updates */}
-                    <section className={styles.section}>
-                        <div className={styles.glassCard}>
-                            <h3>System Status</h3>
-                            {MOCK_ANNOUNCEMENTS.map(ann => (
-                                <div key={ann.id} style={{ marginBottom: '16px', paddingLeft: '12px', borderLeft: `3px solid ${ann.severity === 'warning' ? '#ffb900' : '#0078d4'}` }}>
-                                    <div style={{ fontWeight: 600 }}>{ann.title}</div>
-                                    <div style={{ fontSize: '0.9em' }}>{ann.content}</div>
-                                </div>
-                            ))}
-                        </div>
-                    </section>
-
-                    {/* 5. Recent History & Solutions */}
-                    <section className={styles.section}>
-                        <h3>Resolved Recently {isLoading && '(Loading...)'}</h3>
-                        {!isLoading && resolvedTickets.length === 0 && <p>No resolved tickets found.</p>}
-                        {resolvedTickets.map(ticket => (
-                            <div key={ticket.id} className={styles.statusCard} style={{ borderLeftColor: '#107c10', opacity: 0.8, cursor: 'pointer' }} onClick={() => setSelectedTicketId(ticket.id)}>
-                                <div>
-                                    <strong>{ticket.id}</strong>: {ticket.title}
-                                    <div style={{ fontSize: '0.8em' }}>{ticket.category} • Resolved {ticket.date}</div>
-                                </div>
-                                <span className={styles.badge} style={{ backgroundColor: '#dff6dd', color: '#107c10' }}>Resolved</span>
-                            </div>
-                        ))}
-                    </section>
-                </div>
-            </div>
-            {/* 6. Notifications Redesigned Popup */}
-            {isNotificationPanelOpen && (
-                <div className={styles.notificationPopupOverlay} onClick={() => setIsNotificationPanelOpen(false)}>
-                    <div className={styles.notificationPopup} onClick={(e) => e.stopPropagation()}>
-                        <div className={styles.popupHeader}>
-                            <h3>Notifications</h3>
-                            <button onClick={() => setIsNotificationPanelOpen(false)} className={styles.popupCloseBtn}>
-                                <Icon iconName="Cancel" />
-                            </button>
-                        </div>
-                        
-                        <div className={styles.popupScrollArea}>
-
-                            {/* Dynamic Ticket Notifications */}
-                            {notifications.length === 0 && (
-                                <div className={styles.emptyNotiLine}>
-                                    No new notifications at this time.
+                    )}
+                    
+                    {/* Role-based conditional links */}
+                    {userRole === 'Agent' && onNavigateToAgent && (
+                        <div className={styles.navItem} onClick={onNavigateToAgent}>
+                            <Icon iconName="Headset" />
+                            <span>Agent Human</span>
+                            {pendingAgentTicketsCount > 0 && (
+                                <div style={{
+                                    marginLeft: 'auto', background: '#ef4444', color: 'white', borderRadius: '50%', width: '18px', height: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: 'bold'
+                                }}>
+                                    {pendingAgentTicketsCount > 99 ? '99+' : pendingAgentTicketsCount}
                                 </div>
                             )}
-
-                            {notifications.map(noti => (
-                                <div key={noti.id} className={styles.notiItem} onClick={async () => {
-                                    // Mark as read in localStorage
-                                    const user = await spService._sp.web.currentUser();
-                                    const seenStatusKey = `helpdesk_seen_status_${user.Id}`;
-                                    const seenCommentsKey = `helpdesk_seen_comments_${user.Id}`;
-                                    
-                                    if (noti.type === 'status') {
-                                        const seenStatus = JSON.parse(localStorage.getItem(seenStatusKey) || '{}');
-                                        // Find the ticket and its actual current status
-                                        const allT = [...activeTickets, ...resolvedTickets];
-                                        const matchingTickets = allT.filter((t: any) => t.id === noti.ticketId);
-                                        if (matchingTickets.length > 0) {
-                                            const t = matchingTickets[0];
-                                            seenStatus[t.spId || parseInt(noti.id.split('_')[1])] = t.status;
-                                            localStorage.setItem(seenStatusKey, JSON.stringify(seenStatus));
-                                        }
-                                    } else if (noti.type === 'message') {
-                                        const seenComments = JSON.parse(localStorage.getItem(seenCommentsKey) || '{}');
-                                        const commentId = parseInt(noti.id.split('_')[2]);
-                                        const ticketId = parseInt(noti.id.split('_')[1]);
-                                        seenComments[ticketId] = commentId;
-                                        localStorage.setItem(seenCommentsKey, JSON.stringify(seenComments));
-                                    } else if (noti.id.indexOf('overdue_') === 0) {
-                                        const ticketId = parseInt(noti.id.split('_')[1]);
-                                        const seenOverdueKey = `helpdesk_seen_overdue_${user.Id}`;
-                                        const seenOverdue = JSON.parse(localStorage.getItem(seenOverdueKey) || '{}');
-                                        seenOverdue[ticketId] = true;
-                                        localStorage.setItem(seenOverdueKey, JSON.stringify(seenOverdue));
-                                    } else if (noti.id.indexOf('approaching_') === 0) {
-                                        const ticketId = parseInt(noti.id.split('_')[1]);
-                                        const seenApproachingKey = `helpdesk_seen_approaching_${user.Id}`;
-                                        const seenApproaching = JSON.parse(localStorage.getItem(seenApproachingKey) || '{}');
-                                        seenApproaching[ticketId] = true;
-                                        localStorage.setItem(seenApproachingKey, JSON.stringify(seenApproaching));
-                                    }
-
-                                    setSelectedTicketId(noti.ticketId);
-                                    setIsNotificationPanelOpen(false);
-                                    // Refresh notifications list locally
-                                    setNotifications(prev => prev.filter(n => n.id !== noti.id));
-                                    setHasNotifications(notifications.length > 1);
-                                }}>
-                                    <div className={styles.notiAvatar}>
-                                        <div className={`${styles.avatarPlaceholder} ${noti.type === 'status' ? styles.statusIcon : styles.messageIcon}`}>
-                                            <Icon iconName={noti.type === 'status' ? "ReminderTime" : "Message"} />
-                                        </div>
-                                    </div>
-                                    <div className={styles.notiContent}>
-                                        <div className={styles.notiRow}>
-                                            <span className={styles.notiName}>{noti.title}</span>
-                                            <span className={styles.notiTime}>{noti.date}</span>
-                                        </div>
-                                        <p className={styles.notiMsg}>{noti.message}</p>
-                                    </div>
-                                </div>
-                            ))}
-
                         </div>
+                    )}
 
-                        <div className={styles.popupFooter}>
-                            <span className={styles.viewAllLink}>View All</span>
+                    {userRole === 'Admin' && onNavigateToAdmin && (
+                        <div className={styles.navItem} onClick={onNavigateToAdmin}>
+                            <Icon iconName="Settings" />
+                            <span>Admin Panel</span>
+                        </div>
+                    )}
+                </div>
+
+
+            </aside>
+
+            {/* Main Content Area */}
+            <main className={styles.mainContent}>
+                {/* Top Header */}
+                <header className={styles.topHeader}>
+                    <div className={styles.topNavLinks}>
+                        <div className={`${styles.topNavLink} ${styles.active}`}>Dashboard</div>
+                        <div className={styles.topNavLink} onClick={() => document.getElementById('active-tickets-section')?.scrollIntoView({ behavior: 'smooth' })} style={{ cursor: 'pointer' }}>My Tickets</div>
+
+                    </div>
+                    
+                    <div className={styles.headerIcons}>
+                        {/* Notification bell moved to global SharePoint header extension */}
+                    </div>
+                </header>
+
+                <div className={styles.contentWrapper}>
+                    {activeView === 'dashboard' && (
+                    <>
+                    {/* Hero Section */}
+                    <section className={styles.heroSection}>
+                        <h1>Hello, {escape(userDisplayName)}</h1>
+                        <p style={{ margin: 0 }}>Welcome to our HelpDesk</p>
+                    </section>
+
+                    {/* Quick Actions (Full Width) */}
+                    <div className={styles.sectionBlock} style={{ marginBottom: '24px' }}>
+                        <div className={styles.sectionHeader}>Quick Actions</div>
+                        <div className={styles.quickActionsGrid}>
+                            {userRole === 'Admin' && onNavigateToAdmin && (
+                                <div className={styles.quickActionCard} onClick={onNavigateToAdmin}>
+                                    <Icon iconName="Settings" />
+                                    <span>Admin Panel</span>
+                                </div>
+                            )}
+                            {userRole === 'Agent' && onNavigateToAgent && (
+                                <div className={styles.quickActionCard} onClick={onNavigateToAgent} style={{ position: 'relative' }}>
+                                    {pendingAgentTicketsCount > 0 && (
+                                        <div style={{
+                                            position: 'absolute', top: '4px', right: '4px', background: '#ef4444', color: 'white', borderRadius: '50%', width: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: 'bold'
+                                        }}>
+                                            {pendingAgentTicketsCount > 99 ? '99+' : pendingAgentTicketsCount}
+                                        </div>
+                                    )}
+                                    <Icon iconName="Headset" />
+                                    <span>Agent Human</span>
+                                </div>
+                            )}
+                            <div className={styles.quickActionCard} onClick={() => setActiveView('new-ticket')}>
+                                <Icon iconName="Add" />
+                                <span>New Ticket</span>
+                            </div>
+                            <div className={styles.quickActionCard} onClick={() => setActiveView('profile')}>
+                                <Icon iconName="Contact" />
+                                <span>My Profile</span>
+                            </div>
+                            {onNavigateToAgentAI && (
+                                <div className={styles.quickActionCard} onClick={() => onNavigateToAgentAI()}>
+                                    <Icon iconName="Robot" />
+                                    <span>Agent AI</span>
+                                </div>
+                            )}
+                            <div className={styles.quickActionCard}>
+                                <Icon iconName="Help" />
+                                <span>Common Fixes</span>
+                            </div>
                         </div>
                     </div>
+
+                    {/* Dashboard Grid */}
+                    <div className={styles.dashboardGrid}>
+                        <div className={styles.leftColumn}>
+
+
+                            {/* Active Tickets */}
+                            <div className={styles.sectionBlock} id="active-tickets-section">
+                                <div className={styles.sectionHeader}>Your Active Tickets</div>
+                                {isLoading && <p>Loading...</p>}
+                                {!isLoading && activeTickets.length === 0 && <p>No active tickets found.</p>}
+                                <div className={styles.ticketList}>
+                                    {activeTickets.map(ticket => {
+                                        const tStatus = ticket.status.toLowerCase().trim();
+                                        let badgeClass = styles.pending;
+                                        if (tStatus === 'in progress') badgeClass = styles.inProgress;
+                                        else if (tStatus.indexOf('awaiting') > -1) badgeClass = styles.awaitingFeedback;
+                                        else if (tStatus === 'nouveau' || tStatus === 'new') badgeClass = styles.new;
+                                        
+                                        const isOverdue = ticket.dueDate && (ticket.dueDate.getTime() < new Date().getTime());
+
+                                        return (
+                                            <div key={ticket.id} className={styles.ticketItem} onClick={() => setSelectedTicketId(ticket.spId || ticket.id)}>
+                                                <div className={styles.ticketInfo}>
+                                                    <div className={styles.ticketTitle}>
+                                                        <strong>{ticket.id}:</strong> {ticket.title}
+                                                    </div>
+                                                    <div className={styles.ticketMeta}>
+                                                        {ticket.category} • Created {ticket.date}
+                                                    </div>
+                                                </div>
+                                                <div className={styles.ticketBadges}>
+                                                    <span className={`${styles.statusBadge} ${badgeClass}`}>{ticket.status}</span>
+                                                    {isOverdue && (
+                                                        <span className={styles.overdueBadge}>
+                                                            <Icon iconName="Clock" />
+                                                            Overdue by {Math.floor((new Date().getTime() - ticket.dueDate!.getTime()) / (1000 * 60 * 60 * 24))}d {Math.floor(((new Date().getTime() - ticket.dueDate!.getTime()) / (1000 * 60 * 60)) % 24)}h
+                                                        </span>
+                                                    )}
+                                                    {!isOverdue && ticket.dueDate && (
+                                                        <SLACountdown targetDate={ticket.dueDate} isResolved={false} />
+                                                    )}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className={styles.rightColumn}>
+
+
+                            {/* Resolved Recently */}
+                            <div className={styles.sectionBlock}>
+                                <div className={styles.sectionHeader}>Resolved Recently</div>
+                                {isLoading && <p>Loading...</p>}
+                                {!isLoading && resolvedTickets.length === 0 && <p>No resolved tickets found.</p>}
+                                <div className={styles.ticketList}>
+                                    {resolvedTickets.map(ticket => (
+                                        <div key={ticket.id} className={`${styles.ticketItem} ${styles.resolvedStyle}`} onClick={() => setSelectedTicketId(ticket.spId || ticket.id)}>
+                                            <div className={styles.ticketInfo}>
+                                                <div className={styles.ticketTitle}>
+                                                    <strong>{ticket.id}:</strong> {ticket.title}
+                                                </div>
+                                                <div className={styles.ticketMeta}>
+                                                    {ticket.category} • Resolved {ticket.date}
+                                                </div>
+                                            </div>
+                                            <div className={styles.ticketBadges}>
+                                                <span className={`${styles.statusBadge} ${styles.resolved}`}>Resolved</span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    </>
+                    )}
+
+                    {activeView === 'new-ticket' && (
+                        <TicketForm 
+                            spService={spService}
+                            currentUserDisplayName={userDisplayName}
+                            onClose={() => setActiveView('dashboard')}
+                        />
+                    )}
+
+                    {activeView === 'profile' && (
+                        <UserProfile
+                            userDisplayName={userDisplayName}
+                            userEmail={props.userEmail}
+                            isDarkTheme={isDarkTheme}
+                            spService={spService}
+                            onBack={() => setActiveView('dashboard')}
+                        />
+                    )}
                 </div>
-            )}
+            </main>
+
+            <button className={styles.fabButton} onClick={() => setActiveView('new-ticket')} title="New Ticket">
+                <Icon iconName="Add" />
+            </button>
+
+            {/* Notifications are now handled by the global Application Customizer header extension */}
         </div>
     );
 };

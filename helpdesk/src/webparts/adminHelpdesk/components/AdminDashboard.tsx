@@ -26,11 +26,12 @@ export interface IAdminDashboardProps {
  * high-level metrics, ticket distributions, and navigation to management tools.
  */
 export const AdminDashboard: React.FC<IAdminDashboardProps> = (props) => {
-  const { userDisplayName, isDarkTheme, onNavigateBack, context, powerBIReportUrl } = props;
+  const { userDisplayName, isDarkTheme, context, powerBIReportUrl } = props;
   const [tickets, setTickets] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [iframeLoading, setIframeLoading] = useState<boolean>(true);
   const [showAuthHelper, setShowAuthHelper] = useState<boolean>(false);
+  const [recentVisibleCount, setRecentVisibleCount] = useState<number>(10);
   const spService = new SPService(context);
 
   useEffect(() => {
@@ -68,14 +69,6 @@ export const AdminDashboard: React.FC<IAdminDashboardProps> = (props) => {
             <div className={styles.headerLeft}>
                 <h2>Admin Dashboard</h2>
                 <p>Welcome back, {escape(userDisplayName)}. Here's an overview of the system {isLoading && '(Loading...)'}</p>
-            </div>
-            <div style={{ display: 'flex', gap: '12px' }}>
-                <button className={styles.backButton} style={{ border: '2px solid var(--brand-accent-blue)', color: 'var(--brand-accent-blue)' }} onClick={props.onNavigateToUsers}>
-                    User Management
-                </button>
-                <button className={styles.backButton} onClick={onNavigateBack}>
-                    User Portal
-                </button>
             </div>
         </header>
 
@@ -188,7 +181,7 @@ export const AdminDashboard: React.FC<IAdminDashboardProps> = (props) => {
                 <div className={styles.card}>
                     <h3>Recent Tickets</h3>
                     <div className={styles.activityFeed}>
-                        {tickets.slice(0, 5).map(ticket => (
+                        {tickets.slice(0, recentVisibleCount).map(ticket => (
                             <div key={ticket.Id} className={styles.activityItem}>
                                 <div className={`${styles.activityDot} ${(ticket.Status || '').toLowerCase().indexOf('resol') !== -1 ? styles.success : ''}`}></div>
                                 <div className={styles.activityContent}>
@@ -198,7 +191,15 @@ export const AdminDashboard: React.FC<IAdminDashboardProps> = (props) => {
                             </div>
                         ))}
                     </div>
-                     <button className={styles.viewAllButton} onClick={props.onNavigateToTickets}>View All Tickets</button>
+                    {tickets.length > recentVisibleCount ? (
+                        <button className={styles.viewAllButton} onClick={() => setRecentVisibleCount(prev => prev + 10)}>
+                            Show More ({tickets.length - recentVisibleCount} remaining)
+                        </button>
+                    ) : (
+                        <button className={styles.viewAllButton} onClick={props.onNavigateToTickets}>
+                            Manage All Tickets
+                        </button>
+                    )}
                 </div>
             </div>
         </div>

@@ -27,13 +27,14 @@ export interface ITicketManagementProps {
  * @param props The properties for this component (ITicketManagementProps)
  */
 export const TicketManagement: React.FC<ITicketManagementProps> = (props) => {
-  const { isDarkTheme, context, onNavigateBack } = props;
+  const { isDarkTheme, context } = props;
   const [tickets, setTickets] = useState<ITicket[]>([]);
   const [filteredTickets, setFilteredTickets] = useState<ITicket[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [selectedTicket, setSelectedTicket] = useState<ITicket | null>(null);
   const [agents, setAgents] = useState<{id: string, siteUserId: number, name: string}[]>([]);
   const [confirmDialog, setConfirmDialog] = useState<{message: string, onConfirm: () => void} | null>(null);
+  const [visibleCount, setVisibleCount] = useState<number>(10);
 
   // Pending changes in detail panel
   const [pendingStatus, setPendingStatus] = useState<string>('');
@@ -167,6 +168,7 @@ export const TicketManagement: React.FC<ITicketManagementProps> = (props) => {
     });
 
     setFilteredTickets(result);
+    setVisibleCount(10);
   };
 
   /**
@@ -311,9 +313,6 @@ export const TicketManagement: React.FC<ITicketManagementProps> = (props) => {
           <h2>Ticket Management</h2>
           <p>Manage and process all helpdesk tickets. {isLoading && '(Loading...)'}</p>
         </div>
-        <button className={styles.backButton} onClick={onNavigateBack}>
-          Back to Dashboard
-        </button>
       </header>
 
       {/* Filters Card */}
@@ -398,7 +397,7 @@ export const TicketManagement: React.FC<ITicketManagementProps> = (props) => {
                 </tr>
               </thead>
               <tbody>
-                {filteredTickets.map(ticket => (
+                {filteredTickets.slice(0, visibleCount).map(ticket => (
                   <tr key={ticket.id}>
                     <td style={{ fontWeight: 600 }}>{ticket.id}</td>
                     <td>{ticket.title}</td>
@@ -437,6 +436,18 @@ export const TicketManagement: React.FC<ITicketManagementProps> = (props) => {
                 ))}
               </tbody>
             </table>
+          )}
+          {filteredTickets.length > visibleCount && (
+            <div style={{ display: 'flex', justifyContent: 'center', marginTop: '24px', paddingBottom: '16px' }}>
+              <button 
+                onClick={() => setVisibleCount(prev => prev + 10)}
+                style={{ background: 'var(--brand-dark-blue)', color: 'white', border: 'none', padding: '10px 24px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, transition: 'opacity 0.2s', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}
+                onMouseOver={(e) => e.currentTarget.style.opacity = '0.9'}
+                onMouseOut={(e) => e.currentTarget.style.opacity = '1'}
+              >
+                Show More Tickets ({filteredTickets.length - visibleCount} remaining)
+              </button>
+            </div>
           )}
         </div>
       </div>

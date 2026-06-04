@@ -24,7 +24,7 @@ export interface IUserManagementProps {
  * including adding new users, changing roles, and activating/deactivating accounts.
  */
 export const UserManagement: React.FC<IUserManagementProps> = (props) => {
-  const { isDarkTheme, context, onNavigateBack } = props;
+  const { isDarkTheme, context } = props;
   const [users, setUsers] = useState<IUser[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -208,9 +208,6 @@ export const UserManagement: React.FC<IUserManagementProps> = (props) => {
           <h2>User Management</h2>
           <p>Control user access, roles, and account status from SharePoint.</p>
         </div>
-        <button className={styles.backButton} onClick={onNavigateBack}>
-          Back to Admin Dashboard
-        </button>
       </header>
 
       {error && (

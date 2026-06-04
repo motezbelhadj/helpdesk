@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Stack, TextField, Dropdown, PrimaryButton, DefaultButton, IDropdownOption, MessageBar, MessageBarType, Dialog, DialogType, DialogFooter } from '@fluentui/react';
+import { Stack, TextField, Dropdown, PrimaryButton, DefaultButton, IDropdownOption, MessageBar, MessageBarType, Dialog, DialogType, DialogFooter, Icon } from '@fluentui/react';
 import { SPService } from '../../../services/SPService';
 import styles from './TicketForm.module.scss';
 
@@ -28,6 +28,7 @@ export const TicketForm: React.FunctionComponent<ITicketFormProps> = (props) => 
     const [success, setSuccess] = React.useState<string | null>(null);
     const [error, setError] = React.useState<string | null>(null);
     const [showConfirm, setShowConfirm] = React.useState<boolean>(false);
+    
     const categoryOptions: IDropdownOption[] = [
         { key: 'Hardware', text: 'Hardware' },
         { key: 'Software', text: 'Software' },
@@ -80,17 +81,23 @@ export const TicketForm: React.FunctionComponent<ITicketFormProps> = (props) => 
     };
 
     return (
-        <div className={styles.ticketFormContainer}>
-            <div className={styles.glassCard}>
-                <div className={styles.header}>
-                    <h2>New Ticket</h2>
-                    <PrimaryButton 
-                        text="Back" 
+        <div style={{ width: '100%' }}>
+            {/* Dark Header */}
+            <div className={styles.formHeader}>
+                <h2>New Ticket</h2>
+                <div className={styles.headerActions}>
+                    <DefaultButton 
                         onClick={props.onClose} 
-                        className={styles.backButton}
-                    />
+                        className={styles.backBtn}
+                        onRenderIcon={() => <Icon iconName="Back" />}
+                    >
+                        Back
+                    </DefaultButton>
                 </div>
-                
+            </div>
+
+            {/* White Form Card */}
+            <div className={styles.formCard}>
                 {success && (
                     <MessageBar messageBarType={MessageBarType.success} onDismiss={() => setSuccess(null)} style={{ marginBottom: 20 }}>
                         {success}
@@ -102,7 +109,7 @@ export const TicketForm: React.FunctionComponent<ITicketFormProps> = (props) => 
                     </MessageBar>
                 )}
 
-                <Stack tokens={{ childrenGap: 20 }}>
+                <Stack tokens={{ childrenGap: 24 }}>
                     <TextField
                         label="Title"
                         placeholder="What is the issue?"
@@ -141,37 +148,71 @@ export const TicketForm: React.FunctionComponent<ITicketFormProps> = (props) => 
                         onChange={(_, val) => setDescription(val || '')}
                     />
 
-                    <div className={styles.fileInputWrapper}>
-                        <label className={styles.fieldLabel}>Attachment</label>
-                        <input type="file" onChange={(e) => setFile(e.target.files ? e.target.files[0] : null)} />
-                        <p style={{ fontSize: '0.8em', color: '#64748b', marginTop: 8 }}>Accepted formats: Images, PDF, Docs (Max 10MB)</p>
+                    {/* Custom Attachment Section */}
+                    <div className={styles.attachmentSection}>
+                        <Icon iconName="CloudUpload" className={styles.uploadIcon} />
+                        <span className={styles.uploadLabel}>Attachment</span>
+                        <div className={styles.uploadControls}>
+                            <label className={styles.customFileInput}>
+                                Choisir un fichier
+                                <input 
+                                    type="file" 
+                                    style={{ display: 'none' }} 
+                                    onChange={(e) => setFile(e.target.files ? e.target.files[0] : null)} 
+                                />
+                            </label>
+                            <span className={styles.fileName}>
+                                {file ? file.name : "Aucun fichier n'a été sélectionné"}
+                            </span>
+                        </div>
+                        <p className={styles.uploadHint}>ACCEPTED FORMATS: IMAGES, PDF, DOCS (MAX 10MB)</p>
                     </div>
 
-                    <div className={styles.actions}>
+                    <div className={styles.submitSection}>
                         <PrimaryButton
                             text={submitting ? "Submitting..." : "Submit Ticket"}
                             onClick={() => setShowConfirm(true)}
                             disabled={submitting || !title || !category || !description}
-                            className={styles.submitButton}
+                            className={styles.submitBtn}
+                            onRenderIcon={() => <Icon iconName="Send" />}
                         />
                     </div>
                 </Stack>
-
-                <Dialog
-                    hidden={!showConfirm}
-                    onDismiss={() => setShowConfirm(false)}
-                    dialogContentProps={{
-                        type: DialogType.normal,
-                        title: 'Confirm Ticket Creation',
-                        subText: 'Are you sure you want to submit this new ticket? Helpdesk agents will be notified immediately.'
-                    }}
-                >
-                    <DialogFooter>
-                        <PrimaryButton onClick={() => { setShowConfirm(false); handleSubmit(); }} text="Yes, Submit" disabled={submitting} />
-                        <DefaultButton onClick={() => setShowConfirm(false)} text="Cancel" disabled={submitting} />
-                    </DialogFooter>
-                </Dialog>
             </div>
+
+            {/* Bottom Info Cards */}
+            <div className={styles.infoCards}>
+                <div className={`${styles.infoCard} ${styles.blue}`}>
+                    <Icon iconName="Timer" />
+                    <h4>Typical Response Time</h4>
+                    <p>Standard priority tickets are usually addressed within 4 hours by our IT staff.</p>
+                </div>
+                <div className={styles.infoCard}>
+                    <Icon iconName="AutoEnhanceOn" />
+                    <h4>AI Suggestion</h4>
+                    <p>Our Agent AI might provide instant solutions once you describe the issue.</p>
+                </div>
+                <div className={styles.infoCard}>
+                    <Icon iconName="Shield" />
+                    <h4>Company Policy</h4>
+                    <p>All hardware requests require supervisor approval before fulfillment.</p>
+                </div>
+            </div>
+
+            <Dialog
+                hidden={!showConfirm}
+                onDismiss={() => setShowConfirm(false)}
+                dialogContentProps={{
+                    type: DialogType.normal,
+                    title: 'Confirm Ticket Creation',
+                    subText: 'Are you sure you want to submit this new ticket? Helpdesk agents will be notified immediately.'
+                }}
+            >
+                <DialogFooter>
+                    <PrimaryButton onClick={() => { setShowConfirm(false); handleSubmit(); }} text="Yes, Submit" disabled={submitting} />
+                    <DefaultButton onClick={() => setShowConfirm(false)} text="Cancel" disabled={submitting} />
+                </DialogFooter>
+            </Dialog>
         </div>
     );
 };

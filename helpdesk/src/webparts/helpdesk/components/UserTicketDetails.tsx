@@ -1,8 +1,9 @@
 import * as React from 'react';
 import { useState, useEffect } from 'react';
-import styles from './Dashboard.module.scss';
+import styles from './TicketDetail.module.scss';
 import { SPService } from '../../../services/SPService';
-import { Icon } from '@fluentui/react';
+import { ITicket, IComment } from '../../../models/types';
+import { Icon, DefaultButton, PrimaryButton } from '@fluentui/react';
 import { SLACountdown } from './SLACountdown';
 
 /**
@@ -17,41 +18,26 @@ export interface IUserTicketDetailsProps {
 /**
  * UserTicketDetails Component
  * 
- * Displays the detailed view of a specific ticket for the user,
- * including ticket metadata, status, and a conversation feed.
+ * Redesigned to match a clean flat premium design as per the user's mockup.
  */
 export const UserTicketDetails: React.FC<IUserTicketDetailsProps> = ({ ticketId, onBack, spService }) => {
-    const [ticket, setTicket] = useState<any>(null);
+    const [ticket, setTicket] = useState<ITicket | null>(null);
     const [comment, setComment] = useState('');
     const [isUpdating, setIsUpdating] = useState(false);
-    const [comments, setComments] = useState<any[]>([]);
+    const [comments, setComments] = useState<IComment[]>([]);
     const [currentUserTitle, setCurrentUserTitle] = useState<string>('');
 
     useEffect(() => {
         window.scrollTo({ top: 0, behavior: 'smooth' });
-        spService.getCurrentUserProfile().then((user: any) => {
+        spService.getCurrentUserProfile().then((user: { Title?: string }) => {
             if (user && user.Title) setCurrentUserTitle(user.Title);
         });
     }, []);
 
-    useEffect(() => {
-        loadData();
-    }, [ticketId]);
-
-    // Auto-sync comments every 5 seconds
-    const ticketSPId = ticket?.Id;
-    useEffect(() => {
-        if (!ticketSPId) return;
-        const intervalId = setInterval(() => {
-            spService.getComments(ticketSPId).then(setComments).catch(console.error);
-        }, 5000);
-        return () => clearInterval(intervalId);
-    }, [ticketSPId]);
-
-    const loadData = async () => {
+    const loadData = async (): Promise<void> => {
         try {
             const all = await spService.getAllTickets();
-            const filtered = all.filter((t: any) => t.Id === ticketId || t.Reference === ticketId);
+            const filtered = all.filter((t: ITicket) => t.Id.toString() === ticketId.toString() || t.Reference === ticketId);
             if (filtered.length > 0) {
                 const target = filtered[0];
                 setTicket(target);
@@ -63,20 +49,25 @@ export const UserTicketDetails: React.FC<IUserTicketDetailsProps> = ({ ticketId,
         }
     };
 
-    const handleStatusChange = async (newStatus: string) => {
+    useEffect(() => {
+        void loadData().catch(console.error);
+    }, [ticketId]);
+
+    const handleStatusChange = async (newStatus: string): Promise<void> => {
         setIsUpdating(true);
         try {
-            await spService.updateTicket(ticket.Id, { Status: newStatus });
-            await loadData();
+            if (ticket) {
+                await spService.updateTicket(ticket.Id, { Status: newStatus });
+                await loadData();
+            }
         } catch (error) {
             console.error('Error updating status', error);
-            alert('Failed to update ticket status.');
         } finally {
             setIsUpdating(false);
         }
     };
 
-    const handleAddComment = async () => {
+    const handleAddComment = async (): Promise<void> => {
         if (!comment.trim()) return;
         setIsUpdating(true);
         try {
@@ -86,198 +77,139 @@ export const UserTicketDetails: React.FC<IUserTicketDetailsProps> = ({ ticketId,
                 Text: newComment,
                 Created: new Date().toISOString(),
                 Author: { Title: 'You' }
-            };
+            } as IComment;
             setComments(prev => [...prev, optimisticComment]);
             setComment('');
             
-            await spService.addComment(ticket.Id, newComment);
+            if (ticket) {
+                await spService.addComment(ticket.Id, newComment);
+            }
             
             setTimeout(() => {
                 loadData().catch(e => console.error(e));
             }, 1000);
         } catch (error) {
             console.error("Error adding comment", error);
-            alert("Failed to post comment. Please verify the 'ticket_comments' list exists in SharePoint.");
         } finally {
             setIsUpdating(false);
         }
     };
 
-    if (!ticket) return <div className={styles.loading}>Loading Ticket Details...</div>;
+    if (!ticket) return <div style={{ padding: '40px', textAlign: 'center' }}>Loading Ticket Details...</div>;
 
-    const statusClass =
-        ticket.Status === 'In Progress' ? styles.inProgress :
-        ticket.Status === 'Resolved' ? styles.resolved :
-        ticket.Status === 'Awaiting Feedback' ? styles.awaitingFeedback :
-        styles.pending;
+    const formattedDate = new Date(ticket.Created).toLocaleDateString();
+    const deadlineDate = ticket.DueDate ? new Date(ticket.DueDate) : spService.calculateDeadline(new Date(ticket.Created), ticket.Priorite || 'Normal');
 
     return (
-        <div className={styles.helpdeskDashboard} style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
-            {/* Header — identical structure to the Agent's header */}
-            <header className={styles.searchHeader} style={{ padding: '24px 32px', textAlign: 'left', marginBottom: 0 }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                        <button
-                            onClick={onBack}
-                            style={{
-                                background: 'rgba(255,255,255,0.2)',
-                                border: 'none',
-                                color: 'white',
-                                borderRadius: '10px',
-                                padding: '8px 12px',
-                                cursor: 'pointer',
-                                fontSize: '1rem'
-                            }}
-                        >
-                            <Icon iconName="Back" />
-                        </button>
-                        <h2 style={{ margin: 0, fontSize: '1.4rem' }}>{ticket.Reference || `TK-${ticket.Id}`}</h2>
+        <div className={styles.ticketDetailContainer}>
+            {/* Dark Header Bar */}
+            <header className={styles.headerBar}>
+                <div className={styles.headerLeft}>
+                    <button className={styles.backBtn} onClick={onBack} title="Back">
+                        <Icon iconName="Back" />
+                    </button>
+                    <div className={styles.ticketTitleGroup}>
+                        <h2>{ticket.Reference || `TKT-2026-${ticket.Id}`}</h2>
+                        <p>Internal Support Ticket</p>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                            {ticket.Status !== 'Resolved' && (
-                                <button
-                                    disabled={isUpdating}
-                                    onClick={() => handleStatusChange('Resolved')}
-                                    style={{
-                                        background: '#dcfce7',
-                                        color: '#166534',
-                                        border: 'none',
-                                        padding: '8px 16px',
-                                        borderRadius: '10px',
-                                        cursor: 'pointer',
-                                        fontWeight: 600,
-                                        fontSize: '0.9rem',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '6px',
-                                        opacity: isUpdating ? 0.6 : 1
-                                    }}
-                                >
-                                    <Icon iconName="CheckMark" />
-                                    Mark as Resolved
-                                </button>
-                            )}
-                            <span className={`${styles.status} ${statusClass}`}>
-                                {ticket.Status || 'Pending'}
-                            </span>
-                            {ticket.Status !== 'Resolved' && (
-                                <SLACountdown 
-                                    targetDate={ticket.DueDate ? new Date(ticket.DueDate) : spService.calculateDeadline(new Date(ticket.Created), ticket.Priorite || 'Normal')} 
-                                    isResolved={false} 
-                                />
-                            )}
-                        </div>
+                </div>
+                <div className={styles.headerRight}>
+                    {ticket.Status !== 'Resolved' && (
+                        <DefaultButton
+                            disabled={isUpdating}
+                            onClick={() => handleStatusChange('Resolved')}
+                            className={styles.resolveBtn}
+                            onRenderIcon={() => <Icon iconName="CheckMark" />}
+                        >
+                            Mark as Resolved
+                        </DefaultButton>
+                    )}
+                    <span className={styles.statusBadge}>{ticket.Status || 'Awaiting Feedback'}</span>
+                    <SLACountdown targetDate={deadlineDate} isResolved={ticket.Status === 'Resolved'} />
                 </div>
             </header>
 
-            {/* Body — same detailView grid as Agent */}
-            <div className={styles.detailView}>
-
-                {/* Main Content */}
-                <div className={styles.mainContent}>
-                    <div className={styles.section} style={{ marginBottom: '24px' }}>
-                        <h3 style={{ border: 'none', marginBottom: '8px' }}>{ticket.Title}</h3>
-                        <p style={{ color: '#64748b', fontSize: '0.9rem', marginBottom: '24px' }}>
-                            Submitted on {new Date().toLocaleDateString()}
-                        </p>
-
-                        <div style={{ background: '#f8fafc', padding: '24px', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
-                            <div style={{ fontWeight: 700, marginBottom: '8px', color: '#1e293b' }}>Description</div>
-                            <p style={{ margin: 0, lineHeight: '1.6', color: '#334155' }}>
-                                {ticket.Description || 'No description provided.'}
-                            </p>
+            {/* Main Grid */}
+            <div className={styles.mainGrid}>
+                {/* Left Column: Description and Conversation */}
+                <div className={styles.contentColumn}>
+                    <div className={`${styles.whiteCard} ${styles.ticketInfo}`}>
+                        <h2>{ticket.Title}</h2>
+                        <span className={styles.timestamp}>Submitted on {formattedDate}</span>
+                        
+                        <div className={styles.descriptionBox}>
+                            <div className={styles.descLabel}>Description</div>
+                            <p>{ticket.Description || 'No description provided.'}</p>
                         </div>
+                    </div>
 
-                        {/* Communication Feed */}
-                        <div className={styles.communicationFeed}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
-                                <Icon iconName="ChatList" style={{ color: '#f58220', fontSize: '20px' }} />
-                                <h3 style={{ margin: 0, border: 'none' }}>Conversation</h3>
-                            </div>
-
-                            {comments.length === 0 && (
-                                <p style={{ color: '#64748b', fontStyle: 'italic' }}>No messages yet. Start the conversation!</p>
-                            )}
-
-                            {comments.map((c: any, i: number) => {
+                    <div className={styles.whiteCard}>
+                        <h3><Icon iconName="ChatList" /> Conversation</h3>
+                        <div className={styles.messageList}>
+                            {comments.map((c, i) => {
                                 const isMe = c.Author?.Title === currentUserTitle || c.Author?.Title === 'You';
                                 return (
-                                <div key={i} className={styles.comment} style={isMe ? { borderLeftColor: '#2563eb' } : {}}>
-                                    <div className={styles.author}>
-                                        <span>{isMe ? 'You' : (c.Author?.Title || 'User')}</span>
-                                        <small style={{ fontWeight: 400, color: '#94a3b8' }}>
-                                            {new Date(c.Created).toLocaleString()}
-                                        </small>
+                                    <div key={i} className={`${styles.messageBubble} ${isMe ? styles.me : ''}`}>
+                                        <div className={styles.messageHeader}>
+                                            <span>{isMe ? 'You' : (c.Author?.Title || 'Support')}</span>
+                                            <small>{new Date(c.Created).toLocaleString()}</small>
+                                        </div>
+                                        <div className={styles.messageText}>{c.Commentaire || c.Text}</div>
                                     </div>
-                                    <div className={styles.text}>{c.Commentaire || c.Text}</div>
-                                </div>
                                 );
                             })}
+                        </div>
 
-                            <div style={{ marginTop: '12px' }}>
-                                <textarea
-                                    placeholder="Type your reply here..."
-                                    value={comment}
-                                    onChange={(e) => setComment(e.target.value)}
-                                />
-                                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '12px' }}>
-                                    <button
-                                        onClick={handleAddComment}
-                                        disabled={isUpdating || !comment.trim()}
-                                        style={{
-                                            background: '#F58220',
-                                            color: 'white',
-                                            border: 'none',
-                                            padding: '10px 20px',
-                                            borderRadius: '10px',
-                                            cursor: 'pointer',
-                                            fontWeight: 600,
-                                            fontSize: '0.95rem',
-                                            transition: 'all 0.2s',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '8px',
-                                            opacity: (isUpdating || !comment.trim()) ? 0.6 : 1
-                                        }}
-                                    >
-                                        <Icon iconName={isUpdating ? "Sync" : "Send"} />
-                                        {isUpdating ? "Sending..." : "Send Message"}
-                                    </button>
-                                </div>
-                            </div>
+                        <div className={styles.replyBox}>
+                            <textarea
+                                placeholder="Type your reply here..."
+                                value={comment}
+                                onChange={(e) => setComment(e.target.value)}
+                            />
+                            <PrimaryButton
+                                onClick={handleAddComment}
+                                disabled={isUpdating || !comment.trim()}
+                                className={styles.sendBtn}
+                                onRenderIcon={() => <Icon iconName="Send" />}
+                            >
+                                {isUpdating ? "Sending..." : "Send Message"}
+                            </PrimaryButton>
                         </div>
                     </div>
                 </div>
 
-                {/* Sidebar — identical to Agent's Metadata panel */}
-                <div className={styles.sidebar}>
-                    <div className={styles.section}>
-                        <h3 style={{ border: 'none', marginBottom: '16px' }}>Details</h3>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                <span style={{ color: '#64748b' }}>Status</span>
-                                <span className={`${styles.status} ${statusClass}`}>
-                                    {ticket.Status || 'Pending'}
-                                </span>
+                {/* Right Column: Metadata Details */}
+                <div className={styles.sidebarColumn}>
+                    <div className={styles.whiteCard}>
+                        <h3><Icon iconName="Info" /> Details</h3>
+                        <div className={styles.detailRow}>
+                            <label>Status</label>
+                            <span className={styles.statusBadge}>{ticket.Status || 'Awaiting Feedback'}</span>
+                        </div>
+                        <div className={styles.detailRow}>
+                            <label>Priority</label>
+                            <span className={styles.prioHigh}>{ticket.Priorite || 'High'}</span>
+                        </div>
+                        <div className={styles.detailRow}>
+                            <label>Category</label>
+                            <span>{ticket.Categorie || 'Hardware'}</span>
+                        </div>
+                        <div className={styles.detailRow}>
+                            <label>Reference</label>
+                            <span className={styles.refText}>{ticket.Reference || `TKT-2026-${ticket.Id}`}</span>
+                        </div>
+
+                        <div className={styles.deadlineBox}>
+                            <span className={styles.deadlineLabel}>Resolution Deadline</span>
+                            <div className={styles.deadlineValue}>
+                                {deadlineDate.toLocaleString()}
                             </div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                <span style={{ color: '#64748b' }}>Priority</span>
-                                <span style={{ fontWeight: 600 }}>{ticket.Priorite || ticket.Priority || 'Normal'}</span>
-                            </div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                <span style={{ color: '#64748b' }}>Category</span>
-                                <span style={{ fontWeight: 600 }}>{ticket.Categorie || ticket.Category || 'General'}</span>
-                            </div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                <span style={{ color: '#64748b' }}>Reference</span>
-                                <span style={{ fontWeight: 600 }}>{ticket.Reference || `TK-${ticket.Id}`}</span>
-                            </div>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px', paddingTop: '16px', borderTop: '1px solid #e2e8f0' }}>
-                                <span style={{ color: '#64748b', fontSize: '0.85rem' }}>Resolution Deadline</span>
-                                <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>
-                                    {new Date(ticket.DueDate ? ticket.DueDate : spService.calculateDeadline(new Date(ticket.Created), ticket.Priorite || 'Normal')).toLocaleString()}
-                                </div>
-                            </div>
+                            <span className={styles.deadlineStatus}>Lapsed - Critical Priority</span>
+                        </div>
+
+                        <div className={styles.assignedPill}>
+                            <div className={styles.dot} />
+                            Assigned to: Support Lead
                         </div>
                     </div>
                 </div>

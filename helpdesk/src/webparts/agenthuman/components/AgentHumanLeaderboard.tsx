@@ -17,6 +17,12 @@ interface IAgentStat {
   badges: string[];
 }
 
+/**
+ * AgentHumanLeaderboard Component
+ * 
+ * Displays agent rankings and achievements.
+ * Redesigned to match the premium Helpdesk style.
+ */
 export const AgentHumanLeaderboard: React.FC<ILeaderboardProps> = ({ spService, onBack }) => {
   const [agents, setAgents] = useState<IAgentStat[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -29,8 +35,6 @@ export const AgentHumanLeaderboard: React.FC<ILeaderboardProps> = ({ spService, 
     setIsLoading(true);
     try {
       const allTickets = await spService.getAllTickets();
-
-      // Extract unique agents who have at least one ticket assigned to them
       const uniqueAgentMap: { [id: number]: { id: number, name: string } } = {};
       allTickets.forEach((t: any) => {
           if (t.AssignedTo && t.AssignedTo.Id) {
@@ -45,9 +49,11 @@ export const AgentHumanLeaderboard: React.FC<ILeaderboardProps> = ({ spService, 
 
       const stats: IAgentStat[] = rawAgents.map((ag: { id: number, name: string }) => {
         const assignedTickets = allTickets.filter((t: any) => t.AssignedTo && t.AssignedTo.Id === ag.id);
-        const resolvedTickets = assignedTickets.filter((t: any) => t.Status === 'Resolved' || t.Status === 'Resolu' || t.status === 'Resolved');
+        const resolvedTickets = assignedTickets.filter((t: any) => {
+            const s = (t.Status || t.Statut || t.status || '').toLowerCase();
+            return s === 'resolved' || s === 'resolu' || s === 'résolu';
+        });
         
-        // Simulating resolution time since we don't have explicit Modified in our base selection
         let totalHours = 0;
         resolvedTickets.forEach((t: any) => {
             const created = new Date(t.Created).getTime();
@@ -70,10 +76,8 @@ export const AgentHumanLeaderboard: React.FC<ILeaderboardProps> = ({ spService, 
         };
       });
       
-      // Sort by highest resolved count
       stats.sort((a, b) => b.resolvedCount - a.resolvedCount);
       
-      // Top resolver badge
       if (stats.length > 0 && stats[0].resolvedCount > 0) {
           if (stats[0].badges.indexOf('Top Resolver') === -1) {
               stats[0].badges.push('Top Resolver');
@@ -115,23 +119,18 @@ export const AgentHumanLeaderboard: React.FC<ILeaderboardProps> = ({ spService, 
 
   return (
     <div className={styles.dashboard}>
-      <header className={styles.header}>
-        <div>
-          <h2>Agent Leaderboard</h2>
-          <p style={{ margin: '8px 0 0 0', opacity: 0.8, fontSize: '0.9rem' }}>Recognizing top performers and outstanding contributions.</p>
-        </div>
-        <div>
-          <button className={styles.btnPrimary} style={{ background: 'rgba(255,255,255,0.2)', boxShadow: 'none' }} onClick={onBack}>
-            <Icon iconName="Back" style={{ marginRight: '8px' }} />
-            Back to Dashboard
-          </button>
-        </div>
-      </header>
-
       <section className={styles.section} style={{ background: 'transparent', border: 'none', boxShadow: 'none', padding: 0 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+            <h3 style={{ border: 'none', margin: 0 }}>Service Excellence Rankings</h3>
+            <button className={styles.btnPrimary} style={{ background: 'white', color: 'var(--brand-dark-blue)', border: '1px solid var(--card-border)', boxShadow: 'none' }} onClick={onBack}>
+                <Icon iconName="Back" style={{ marginRight: '8px' }} />
+                Dashboard
+            </button>
+        </div>
+
         <div className={styles.leaderboardGrid}>
             {agents.length === 0 ? (
-                <div style={{ padding: '40px', textAlign: 'center', background: 'white', borderRadius: '16px' }}>
+                <div className={styles.whiteCard} style={{ textAlign: 'center' }}>
                     <p>No agent data available to generate leaderboard.</p>
                 </div>
             ) : (

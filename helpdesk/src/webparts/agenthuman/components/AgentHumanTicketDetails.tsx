@@ -2,8 +2,7 @@ import * as React from 'react';
 import { useState, useEffect } from 'react';
 import styles from './AgentHuman.module.scss';
 import { SPService } from '../../../services/SPService';
-import { Icon } from '@fluentui/react';
-import { SLACountdown } from '../../helpdesk/components/SLACountdown';
+import { Icon, PrimaryButton } from '@fluentui/react';
 
 /**
  * Properties for the AgentHumanTicketDetails component.
@@ -20,6 +19,8 @@ export interface ITicketDetailsProps {
  * 
  * Displays the detailed view of a ticket for the agent, allowing them to 
  * update status, post comments/internal notes, and view AI-driven suggestions.
+ * 
+ * Redesigned to match the Helpdesk premium style.
  */
 export const AgentHumanTicketDetails: React.FC<ITicketDetailsProps> = ({ ticketId, onBack, spService, agentAIPageUrl }) => {
   const [ticket, setTicket] = useState<any>(null);
@@ -27,20 +28,22 @@ export const AgentHumanTicketDetails: React.FC<ITicketDetailsProps> = ({ ticketI
   const [isUpdating, setIsUpdating] = useState(false);
   const [comments, setComments] = useState<any[]>([]);
   const [currentUserTitle, setCurrentUserTitle] = useState<string>('');
+  const [isAiDismissed, setIsAiDismissed] = useState(false);
 
   useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
     spService.getCurrentUserProfile().then((user: any) => {
         if (user && user.Title) setCurrentUserTitle(user.Title);
     });
     loadData();
   }, [ticketId]);
 
-  // Auto-sync comments every 5 seconds
+  // Auto-sync comments every 10 seconds
   useEffect(() => {
     if (!ticketId) return;
     const intervalId = setInterval(() => {
         spService.getComments(ticketId).then(setComments).catch(console.error);
-    }, 5000);
+    }, 10000);
     return () => clearInterval(intervalId);
   }, [ticketId]);
 
@@ -91,7 +94,6 @@ export const AgentHumanTicketDetails: React.FC<ITicketDetailsProps> = ({ ticketI
       }, 1000);
     } catch (error) {
       console.error("Error adding comment", error);
-      alert("Failed to post comment. Please verify if the 'ticket_comments' list exists in SharePoint.");
     } finally {
       setIsUpdating(false);
     }
@@ -102,60 +104,69 @@ export const AgentHumanTicketDetails: React.FC<ITicketDetailsProps> = ({ ticketI
       alert("Please configure the Agent AI Page URL in the web part properties.");
       return;
     }
-    
-    // Pass ticket info to the AI assistant
     const query = `${ticket.Title}: ${ticket.Description || ''}`;
     const url = new URL(agentAIPageUrl, window.location.origin);
     url.searchParams.set('q', query);
+    url.searchParams.set('ticketId', ticketId.toString());
     window.location.href = url.toString();
   };
 
   if (!ticket) return <div className={styles.loading}>Loading Ticket Details...</div>;
 
+  const deadlineDate = ticket.DueDate ? new Date(ticket.DueDate) : spService.calculateDeadline(new Date(ticket.Created), ticket.Priorite || ticket.Priority || 'Normal');
+
   return (
     <div className={styles.dashboard}>
-      <header className={styles.header}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <button onClick={onBack} className={styles.btnPrimary} style={{ background: 'rgba(255,255,255,0.2)', boxShadow: 'none', padding: '8px' }}>
+      {/* Detail Header Bar (Redesigned to match image) */}
+      <header className={styles.headerBar}>
+        <div className={styles.headerLeft}>
+          <button onClick={onBack} className={styles.backBtn} title="Back">
             <Icon iconName="Back" />
           </button>
-          <h2 style={{ fontSize: '1.4rem' }}>{ticket.Reference || `TK-${ticket.Id}`}</h2>
+          <div className={styles.ticketTitleGroup}>
+            <h2>{ticket.Reference || `TKT-2026-${ticket.Id}`}</h2>
+          </div>
         </div>
-        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-          <button disabled={isUpdating} onClick={() => handleStatusChange('In Progress')} className={styles.btnPrimary} style={{ background: '#dbeafe', color: '#1e40af' }}>
-            <Icon iconName="Processing" style={{ marginRight: '8px' }} />
+        <div className={styles.headerRight}>
+          <button 
+            disabled={isUpdating} 
+            onClick={() => handleStatusChange('In Progress')} 
+            className={styles.btnInProgress}
+          >
+            <Icon iconName="Processing" />
             Mark In Progress
           </button>
-          <button disabled={isUpdating} onClick={() => handleStatusChange('Awaiting Feedback')} className={styles.btnPrimary} style={{ background: '#fef3c7', color: '#92400e' }}>
-            <Icon iconName="Wait" style={{ marginRight: '8px' }} />
+          <button 
+            disabled={isUpdating} 
+            onClick={() => handleStatusChange('Awaiting Feedback')} 
+            className={styles.btnAwaiting}
+          >
             Awaiting Feedback
           </button>
-          {ticket.Status !== 'Resolved' && (
-            <SLACountdown 
-              targetDate={ticket.DueDate ? new Date(ticket.DueDate) : spService.calculateDeadline(new Date(ticket.Created), ticket.Priorite || ticket.Priority || 'Normal')} 
-              isResolved={false} 
-            />
+          {ticket.Status === 'Resolved' && (
+             <span className={styles.status} style={{ background: '#dcfce7', color: '#166534', padding: '10px 20px', borderRadius: '8px' }}>
+                Resolved
+             </span>
           )}
         </div>
       </header>
 
       <div className={styles.detailView}>
+        {/* Left Column: Description and Conversation */}
         <div className={styles.mainContent}>
-          <div className={styles.section} style={{ marginBottom: '24px' }}>
-            <h3 style={{ border: 'none', marginBottom: '8px' }}>{ticket.Title}</h3>
-            <p style={{ color: '#64748b', fontSize: '0.9rem', marginBottom: '24px' }}>Submitted on {new Date(ticket.Created).toLocaleDateString()}</p>
+          <div className={styles.whiteCard}>
+            <h2 style={{ fontSize: '1.5rem', marginBottom: '8px' }}>{ticket.Title}</h2>
+            <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Submitted on {new Date(ticket.Created).toLocaleDateString()}</span>
             
-            <div style={{ background: '#f8fafc', padding: '24px', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
-              <div style={{ fontWeight: 700, marginBottom: '8px', color: 'var(--brand-dark-blue)' }}>Description</div>
-              <p style={{ margin: 0, lineHeight: '1.6', color: '#334155' }}>{ticket.Description || 'No description provided.'}</p>
+            <div className={styles.descriptionBox}>
+              <div className={styles.descLabel}>Problem Description</div>
+              <p>{ticket.Description || 'No description provided.'}</p>
             </div>
+          </div>
 
+          <div className={styles.whiteCard}>
+            <h3><Icon iconName="ChatList" /> Communication Feed</h3>
             <div className={styles.comments}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
-                <Icon iconName="ChatList" style={{ color: 'var(--brand-orange)', fontSize: '20px' }} />
-                <h3 style={{ margin: 0, border: 'none' }}>Communication Feed</h3>
-              </div>
-              
               {(comments || []).map((c: any, i: number) => {
                 const isMe = c.Author?.Title === currentUserTitle || c.Author?.Title === 'You';
                 return (
@@ -168,42 +179,43 @@ export const AgentHumanTicketDetails: React.FC<ITicketDetailsProps> = ({ ticketI
                   </div>
                 );
               })}
-              
-              <div style={{ marginTop: '12px' }}>
-                <textarea 
-                  placeholder="Post a reply or internal note..." 
-                  value={comment}
-                  onChange={(e) => setComment(e.target.value)}
-                />
-                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '12px' }}>
-                  <button 
-                    onClick={handleAddComment} 
-                    className={styles.btnPrimary}
-                    disabled={isUpdating || !comment.trim()}
-                  >
-                    <Icon iconName={isUpdating ? "Sync" : "Send"} style={{ marginRight: '8px' }} />
-                    {isUpdating ? "Posting..." : "Post Update"}
-                  </button>
-                </div>
+            </div>
+            
+            <div style={{ marginTop: '24px' }}>
+              <textarea 
+                placeholder="Post a reply or internal note..." 
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+              />
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '16px' }}>
+                <PrimaryButton 
+                  onClick={handleAddComment} 
+                  disabled={isUpdating || !comment.trim()}
+                  style={{ borderRadius: '8px' }}
+                >
+                  <Icon iconName={isUpdating ? "Sync" : "Send"} style={{ marginRight: '8px' }} />
+                  {isUpdating ? "Posting..." : "Post Update"}
+                </PrimaryButton>
               </div>
             </div>
           </div>
         </div>
 
+        {/* Right Column: Metadata and AI */}
         <div className={styles.sidebar}>
-          <div className={styles.section} style={{ marginBottom: '24px' }}>
-            <h3 style={{ border: 'none', marginBottom: '16px' }}>Metadata</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: '#64748b' }}>Requester</span>
+          <div className={styles.whiteCard}>
+            <h3><Icon iconName="Info" /> Metadata</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '20px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--card-border)', paddingBottom: '12px' }}>
+                <span style={{ color: 'var(--text-muted)' }}>Requester</span>
                 <span style={{ fontWeight: 600 }}>{ticket.Author?.Title || 'Employee'}</span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: '#64748b' }}>Category</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--card-border)', paddingBottom: '12px' }}>
+                <span style={{ color: 'var(--text-muted)' }}>Category</span>
                 <span style={{ fontWeight: 600 }}>{ticket.Category || 'IT Support'}</span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: '#64748b' }}>Priority</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--card-border)', paddingBottom: '12px' }}>
+                <span style={{ color: 'var(--text-muted)' }}>Priority</span>
                 <span className={`${styles.status} ${
                   (ticket.Priority === 'High' || ticket.Priorite === 'Haute') ? styles.high : 
                   (ticket.Priority === 'Urgent' || ticket.Priorite === 'Urgent') ? styles.urgent : ''
@@ -211,8 +223,8 @@ export const AgentHumanTicketDetails: React.FC<ITicketDetailsProps> = ({ ticketI
                   {ticket.Priority || ticket.Priorite || 'Normal'}
                 </span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: '#64748b' }}>State</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--card-border)', paddingBottom: '12px' }}>
+                <span style={{ color: 'var(--text-muted)' }}>State</span>
                 <span className={`${styles.status} ${
                   ticket.Status === 'In Progress' ? styles.inProgress : 
                   ticket.Status === 'Resolved' ? styles.resolved : 
@@ -221,29 +233,31 @@ export const AgentHumanTicketDetails: React.FC<ITicketDetailsProps> = ({ ticketI
                   {ticket.Status || 'Pending'}
                 </span>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px', paddingTop: '16px', borderTop: '1px solid #e2e8f0' }}>
-                <span style={{ color: '#64748b', fontSize: '0.85rem' }}>SLA Deadline</span>
-                <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>
-                  {new Date(ticket.DueDate ? ticket.DueDate : spService.calculateDeadline(new Date(ticket.Created), ticket.Priorite || ticket.Priority || 'Normal')).toLocaleString()}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px' }}>
+                <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>SLA Deadline</span>
+                <div style={{ fontWeight: 600, fontSize: '0.95rem', color: '#ef4444' }}>
+                  {deadlineDate.toLocaleString()}
                 </div>
               </div>
             </div>
           </div>
 
-          <div className={styles.aiPanel}>
-            <h4>✨ Agent Copilot Suggestion</h4>
-            <p style={{ fontSize: '0.85rem', color: '#1e293b', lineHeight: '1.5', margin: '12px 0' }}>
-              This request seems related to account access. Suggest verifying the user's role in the primary AD group.
-            </p>
-            <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
-              <button className={styles.btnPrimary} style={{ flex: 1, fontSize: '0.8rem', padding: '8px' }} onClick={handleExecuteAction}>
-                Execute Action
-              </button>
-              <button className={styles.btnPrimary} style={{ flex: 1, fontSize: '0.8rem', padding: '8px', background: 'white', color: '#0369a1', border: '1px solid #0369a1', boxShadow: 'none' }}>
-                Dismiss
-              </button>
+          {!isAiDismissed && (
+            <div className={styles.aiPanel}>
+              <h4>Agent AI Suggestion</h4>
+              <p style={{ fontSize: '0.85rem', color: '#1e293b', lineHeight: '1.5', margin: '12px 0' }}>
+                Based on the description, this issue is likely related to account permissions. Suggest checking the user's AD group membership.
+              </p>
+              <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
+                <button className={styles.btnPrimary} style={{ flex: 1, fontSize: '0.8rem', padding: '8px' }} onClick={handleExecuteAction}>
+                  Execute Action
+                </button>
+                <button className={styles.btnPrimary} style={{ flex: 1, fontSize: '0.8rem', padding: '8px', background: 'white', color: '#0369a1', border: '1px solid #0369a1', boxShadow: 'none' }} onClick={() => setIsAiDismissed(true)}>
+                  Dismiss
+                </button>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>
